@@ -240,6 +240,8 @@ export interface AdminStats {
   heldAmount: number;
   openReports: number;
   jobsToday: number;
+  newUsersToday: number;
+  applicationsToday: number;
   revenueByMonth: { month: string; amount: number }[];
   jobsByCategory: { category: string; count: number }[];
 }

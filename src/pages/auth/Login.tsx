@@ -49,7 +49,7 @@ export default function Login() {
         <div>
           <div className="flex items-center justify-between">
             <Label htmlFor="password">كلمة المرور</Label>
-            <Link to="#" className="text-sm text-primary hover:underline">نسيت كلمة المرور؟</Link>
+            <Link to="/login" className="text-sm text-primary hover:underline">نسيت كلمة المرور؟</Link>
           </div>
           <Input
             id="password"

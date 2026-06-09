@@ -71,8 +71,8 @@ export default function Register() {
 
         <p className="text-xs text-muted-foreground text-center">
           بإنشاء حسابك أنت توافق على{" "}
-          <Link to="#" className="text-primary hover:underline">شروط الاستخدام</Link> و{" "}
-          <Link to="#" className="text-primary hover:underline">سياسة الخصوصية</Link>.
+          <Link to="/terms" className="text-primary hover:underline">شروط الاستخدام</Link> و{" "}
+          <Link to="/privacy" className="text-primary hover:underline">سياسة الخصوصية</Link>.
         </p>
       </form>
 

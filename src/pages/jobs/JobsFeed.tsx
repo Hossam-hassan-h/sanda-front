@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Search, MapPin, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MapPin, SlidersHorizontal, Briefcase } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
 import JobCard from "@/components/jobs/JobCard";
 import { useJobs } from "@/hooks/useJobs";
@@ -113,8 +113,18 @@ export default function JobsFeed() {
             {visibleJobs.map((j) => <JobCard key={j.id} job={j} />)}
           </div>
         ) : (
-          <div className="text-center py-20 text-muted-foreground">
-            لا توجد وظائف تطابق بحثك.
+          <div className="text-center py-20">
+            <Briefcase className="h-14 w-14 mx-auto mb-4 text-muted-foreground/30" />
+            <h3 className="font-heading font-bold text-lg text-muted-foreground mb-2">لا توجد وظائف تطابق بحثك</h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              جرّب تغيير كلمات البحث أو الفلاتر. يمكنك أيضاً تصفح جميع الفئات المتاحة.
+            </p>
+            <button
+              onClick={() => { setQ(""); setCity("all"); setCategory("all"); }}
+              className="mt-4 text-sm text-primary font-semibold hover:underline"
+            >
+              مسح الفلاتر
+            </button>
           </div>
         )}
 

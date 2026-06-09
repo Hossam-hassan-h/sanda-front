@@ -8,6 +8,16 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const typeConfig: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
   job: { icon: <Briefcase className="w-4 h-4" />, label: "وظائف", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -46,6 +56,7 @@ export default function NotificationsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [typeFilter, setTypeFilter] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const { data: notifications, isLoading } = useNotifications(user?.role);
   const markRead = useMarkNotificationRead();
@@ -203,7 +214,7 @@ export default function NotificationsPage() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                deleteNotif.mutate(notif.id);
+                                setDeleteTarget(notif.id);
                               }}
                               className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100"
                             >
@@ -232,6 +243,26 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف الإشعار</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف هذا الإشعار؟ لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (deleteTarget) deleteNotif.mutate(deleteTarget); setDeleteTarget(null); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

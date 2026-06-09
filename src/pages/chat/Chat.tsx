@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Paperclip, MessageCircle } from "lucide-react";
+import { Send, Paperclip, MessageCircle, Loader2 } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -79,28 +79,40 @@ export default function Chat() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/30">
-                {messages?.map((m) => {
-                  const mine = m.senderId === user?.id || m.senderId === "u1";
-                  return (
-                    <div key={m.id} className={`flex ${mine ? "justify-start" : "justify-end"}`}>
-                      <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                        mine ? "bg-primary text-primary-foreground rounded-bl-sm" : "bg-card border border-border rounded-br-sm"
-                      }`}>
-                        <div className="text-sm">{m.message}</div>
-                        <div className={`text-[10px] mt-1 ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                          {new Date(m.createdAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
+                {messages === undefined && activeId ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className={`flex ${i % 2 === 0 ? "justify-end" : "justify-start"}`}>
+                        <Skeleton className={`h-12 ${i % 2 === 0 ? "w-48" : "w-56"} rounded-2xl`} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  messages?.map((m) => {
+                    const mine = m.senderId === user?.id || m.senderId === "u1";
+                    return (
+                      <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                          mine ? "bg-primary text-primary-foreground rounded-bl-sm" : "bg-card border border-border rounded-br-sm"
+                        }`}>
+                          <div className="text-sm">{m.message}</div>
+                          <div className={`text-[10px] mt-1 ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                            {new Date(m.createdAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
                 <div ref={endRef} />
               </div>
 
               <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="p-3 border-t border-border flex gap-2">
-                <Button type="button" variant="ghost" size="icon"><Paperclip className="h-5 w-5" /></Button>
-                <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="اكتب رسالتك..." />
-                <Button type="submit" disabled={!text.trim() || send.isPending}><Send className="h-4 w-4" /></Button>
+                <Button type="button" variant="ghost" size="icon" aria-label="إرفاق ملف"><Paperclip className="h-5 w-5" /></Button>
+                <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="اكتب رسالتك..." aria-label="الرسالة" />
+                <Button type="submit" disabled={!text.trim() || send.isPending} aria-label="إرسال">
+                  {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
               </form>
             </div>
           ) : (

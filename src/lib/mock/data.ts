@@ -591,6 +591,8 @@ export const mockStats: AdminStats = {
   heldAmount: 48650,
   openReports: 6,
   jobsToday: 14,
+  newUsersToday: 8,
+  applicationsToday: 23,
   revenueByMonth: [
     { month: "يناير", amount: 12000 },
     { month: "فبراير", amount: 18500 },

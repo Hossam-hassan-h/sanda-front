@@ -1,4 +1,4 @@
-import { Users, Briefcase, AlertTriangle, DollarSign } from "lucide-react";
+import { Users, Briefcase, AlertTriangle, DollarSign, TrendingUp, Clock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/admin/ErrorState";
 import AdminLayout from "@/layouts/AdminLayout";
@@ -72,16 +72,59 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">نشاط اليوم</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground">
-                تم إنشاء <span className="font-semibold text-foreground">{data.jobsToday}</span> وظيفة جديدة اليوم
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">نشاط اليوم</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" /> وظائف جديدة
+                  </span>
+                  <span className="font-semibold">{data.jobsToday}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Users className="h-4 w-4" /> مستخدمين جدد
+                  </span>
+                  <span className="font-semibold">{data.newUsersToday ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" /> تقديمات على الوظائف
+                  </span>
+                  <span className="font-semibold">{data.applicationsToday ?? 0}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">الإحصائيات</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" /> إجمالي الإيرادات
+                  </span>
+                  <span className="font-semibold">{data.heldAmount.toLocaleString()} ج</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Clock className="h-4 w-4" /> بلاغات معلقة
+                  </span>
+                  <span className="font-semibold">{data.openReports}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" /> وظائف نشطة
+                  </span>
+                  <span className="font-semibold">{data.activeJobs}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </>
       ) : null}
     </div>
