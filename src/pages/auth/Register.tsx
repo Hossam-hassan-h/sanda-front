@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { Briefcase, Shield, User } from "lucide-react";
 import AuthLayout from "@/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { RoleToggle } from "./Login";
 import type { UserRole } from "@/api/types";
 
 interface FormValues {
   name: string;
-  phone: string;
-  email?: string;
+  email: string;
+  phone?: string;
   password: string;
   confirmPassword: string;
 }
@@ -27,7 +27,7 @@ export default function Register() {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await registerUser({ name: values.name, phone: values.phone, email: values.email, password: values.password, role });
+      await registerUser({ name: values.name, email: values.email, phone: values.phone, password: values.password, role });
       toast({ title: "تم إنشاء الحساب", description: "ابدأ باستكشاف الوظائف!" });
       navigate("/jobs");
     } catch {
@@ -46,13 +46,13 @@ export default function Register() {
           {errors.name && <p className="text-destructive text-sm mt-1">{errors.name.message}</p>}
         </div>
         <div>
-          <Label htmlFor="phone">رقم الهاتف</Label>
-          <Input id="phone" type="tel" placeholder="01xxxxxxxxx" {...register("phone", { required: "رقم الهاتف مطلوب" })} />
-          {errors.phone && <p className="text-destructive text-sm mt-1">{errors.phone.message}</p>}
+          <Label htmlFor="email">البريد الإلكتروني</Label>
+          <Input id="email" type="email" placeholder="you@example.com" {...register("email", { required: "البريد الإلكتروني مطلوب" })} />
+          {errors.email && <p className="text-destructive text-sm mt-1">{errors.email.message}</p>}
         </div>
         <div>
-          <Label htmlFor="email">البريد الإلكتروني (اختياري)</Label>
-          <Input id="email" type="email" placeholder="you@example.com" {...register("email")} />
+          <Label htmlFor="phone">رقم الهاتف (اختياري)</Label>
+          <Input id="phone" type="tel" placeholder="01xxxxxxxxx" {...register("phone")} />
         </div>
         <div>
           <Label htmlFor="password">كلمة المرور</Label>
@@ -81,5 +81,30 @@ export default function Register() {
         <Link to="/login" className="text-primary font-semibold hover:underline">سجّل الدخول</Link>
       </p>
     </AuthLayout>
+  );
+}
+
+function RoleToggle({ role, onChange }: { role: UserRole; onChange: (r: UserRole) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl">
+      <button
+        type="button"
+        onClick={() => onChange("worker")}
+        className={`flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold transition ${
+          role === "worker" ? "bg-card shadow text-primary" : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <User className="h-4 w-4" /> عامل
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("employer")}
+        className={`flex items-center justify-center gap-2 py-2.5 rounded-lg font-semibold transition ${
+          role === "employer" ? "bg-card shadow text-primary" : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Briefcase className="h-4 w-4" /> صاحب عمل
+      </button>
+    </div>
   );
 }

@@ -2,8 +2,7 @@ import { useQuery, useMutation, useQueryClient, type UseMutationResult } from "@
 import { notificationsApi } from "@/api/notifications";
 import type { Notification } from "@/api/types";
 
-const NOTIF_KEY = ["notifications"] as const;
-const UNREAD_KEY = ["notifications", "unread-count"] as const;
+export const NOTIF_KEY = ["notifications"] as const;
 
 // ─── Query hooks ─────────────────────────────────────────────────
 
@@ -11,12 +10,6 @@ export const useNotifications = (role?: string) =>
   useQuery({
     queryKey: [...NOTIF_KEY, role],
     queryFn: () => notificationsApi.list(role),
-  });
-
-export const useUnreadCount = (role?: string) =>
-  useQuery({
-    queryKey: [...UNREAD_KEY, role],
-    queryFn: () => notificationsApi.unreadCount(role),
   });
 
 // ─── Shared mutation helper ───────────────────────────────────────
@@ -45,11 +38,8 @@ function useNotificationMutation<TArgs>(
         ctx.prev.forEach(([key, data]) => qc.setQueryData(key, data));
       }
     },
-    onSettled: (_data, error) => {
-      if (error) {
-        qc.invalidateQueries({ queryKey: NOTIF_KEY });
-        qc.invalidateQueries({ queryKey: UNREAD_KEY });
-      }
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: NOTIF_KEY });
     },
   });
 }

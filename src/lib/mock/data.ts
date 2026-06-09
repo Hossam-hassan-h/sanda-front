@@ -15,6 +15,7 @@ export const mockUsers: User[] = [
   {
     id: "u1",
     name: "أحمد المصري",
+    email: "ahmed@worker.com",
     phone: "01000000001",
     role: "worker",
     walletBalance: 1250,
@@ -32,6 +33,7 @@ export const mockUsers: User[] = [
   {
     id: "u2",
     name: "سارة عبدالله",
+    email: "sara@employer.com",
     phone: "01000000002",
     role: "employer",
     walletBalance: 5400,
@@ -47,6 +49,7 @@ export const mockUsers: User[] = [
   {
     id: "u3",
     name: "محمود حسن",
+    email: "mahmoud@worker.com",
     phone: "01000000003",
     role: "worker",
     walletBalance: 320,
@@ -63,6 +66,7 @@ export const mockUsers: User[] = [
   {
     id: "u4",
     name: "ليلى الشريف",
+    email: "layla@worker.com",
     phone: "01000000004",
     role: "worker",
     walletBalance: 800,
@@ -79,6 +83,7 @@ export const mockUsers: User[] = [
   {
     id: "u5",
     name: "مطعم البيت السوري",
+    email: "restaurant@employer.com",
     phone: "01000000005",
     role: "employer",
     walletBalance: 12000,
@@ -94,6 +99,7 @@ export const mockUsers: User[] = [
   {
     id: "admin",
     name: "إدارة سندة",
+    email: "admin@sanda.com",
     phone: "01000000000",
     role: "admin",
     walletBalance: 0,

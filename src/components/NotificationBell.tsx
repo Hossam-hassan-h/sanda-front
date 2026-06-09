@@ -3,7 +3,6 @@ import { Bell } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   useNotifications,
-  useUnreadCount,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
   useDeleteNotification,
@@ -17,12 +16,11 @@ export default memo(function NotificationBell() {
 
   const role = user?.role;
   const { data: notifications, isLoading } = useNotifications(role);
-  const { data: unreadData } = useUnreadCount(role);
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const deleteNotif = useDeleteNotification();
 
-  const unreadCount = unreadData?.count ?? 0;
+  const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
 
   // Close dropdown when clicking outside
   useEffect(() => {

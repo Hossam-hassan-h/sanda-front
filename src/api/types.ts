@@ -28,8 +28,8 @@ export interface JobSummary {
 export interface User {
   id: string;
   name: string;
-  phone: string;
-  email?: string;
+  email: string;
+  phone?: string;
   password?: string; // Only for registration, never returned from API
   role: UserRole;
   avatar?: string;        // maps to ERD profile_image

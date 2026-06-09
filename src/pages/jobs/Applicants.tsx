@@ -89,10 +89,13 @@ export default function Applicants() {
                       <Button size="sm" variant="outline" onClick={() => handleReject(a.id)}>
                         <X className="h-4 w-4" /> رفض
                       </Button>
-                      <Button size="sm" variant="ghost" asChild>
-                        <Link to="/chat"><MessageCircle className="h-4 w-4" /> مراسلة</Link>
-                      </Button>
                     </div>
+                  )}
+
+                  {a.status === "accepted" && (
+                    <Button size="sm" variant="ghost" asChild>
+                      <Link to="/chat"><MessageCircle className="h-4 w-4" /> مراسلة</Link>
+                    </Button>
                   )}
                 </div>
               </div>

@@ -75,7 +75,8 @@ export const usersApi = {
       const newUser: User = {
         id: `u${Date.now()}`,
         name: payload.name || "مستخدم جديد",
-        phone: payload.phone || "01000000000",
+        email: payload.email || "user@example.com",
+        phone: payload.phone,
         role: payload.role || "worker",
         walletBalance: payload.walletBalance ?? 0,
         isVerified: payload.isVerified ?? false,

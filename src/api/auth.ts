@@ -3,13 +3,14 @@ import { mockUsers } from "@/lib/mock/data";
 import { mockDelay } from "@/lib/mock/utils";
 import type { User, UserRole } from "./types";
 
-export interface LoginPayload { phone: string; password: string; role?: UserRole }
-export interface RegisterPayload extends LoginPayload { name: string; email?: string; role: UserRole }
+export interface LoginPayload { email: string; password: string; role?: UserRole }
+export interface RegisterPayload { name: string; email: string; phone?: string; password: string; role: UserRole }
 
 export const authApi = {
   async login(payload: LoginPayload): Promise<{ user: User; token: string }> {
     if (USE_MOCKS) {
-      const user = mockUsers.find((u) => u.role === (payload.role ?? "worker")) ?? mockUsers[0];
+      const user = mockUsers.find((u) => u.email === payload.email);
+      if (!user) throw new Error("Invalid credentials");
       return mockDelay({ user, token: "mock-token-" + user.id });
     }
     const { data } = await api.post("/auth/login", payload);
@@ -21,8 +22,8 @@ export const authApi = {
       const user: User = {
         id: "new-" + Date.now(),
         name: payload.name,
-        phone: payload.phone,
         email: payload.email,
+        phone: payload.phone,
         role: payload.role,
         walletBalance: 0,
         isVerified: false,

@@ -156,20 +156,6 @@ export const notificationsApi = {
     return data;
   },
 
-  async unreadCount(role?: string): Promise<{ count: number }> {
-    if (USE_MOCKS) {
-      const filtered =
-        role
-          ? mockNotifications.filter(
-              (n) => !n.isRead && (n.roleTarget === "all" || n.roleTarget === role)
-            )
-          : mockNotifications.filter((n) => !n.isRead);
-      return mockDelay({ count: filtered.length });
-    }
-    const { data } = await api.get<{ count: number }>("/notifications/unread-count");
-    return data;
-  },
-
   async markRead(id: string): Promise<ApiSuccessResponse> {
     if (USE_MOCKS) {
       const notif = mockNotifications.find((n) => n.id === id);

@@ -125,7 +125,7 @@ const App = () => (
           <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/profile/:id" element={<Profile />} />
-          <Route path="/notifications" element={<ProtectedRoute roles={["admin"]}><NotificationsPage /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
 
           {/* ── Settings ───────────────────────────────────────── */}
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

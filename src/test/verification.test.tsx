@@ -35,6 +35,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 const verifiedUser: User = {
   id: "u2",
   name: "سارة عبدالله",
+  email: "sara@employer.com",
   phone: "01000000002",
   role: "employer",
   walletBalance: 5400,
@@ -51,6 +52,7 @@ const verifiedUser: User = {
 const unverifiedUser: User = {
   id: "u3",
   name: "محمود حسن",
+  email: "mahmoud@worker.com",
   phone: "01000000003",
   role: "worker",
   walletBalance: 320,

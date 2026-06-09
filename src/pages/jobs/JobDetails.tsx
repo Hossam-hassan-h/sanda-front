@@ -35,6 +35,9 @@ export default function JobDetails() {
   };
 
   const isWorker = user?.role === "worker";
+  const isEmployer = user?.role === "employer";
+  const isJobOwner = isEmployer && job.employerId === user?.id;
+  const isAcceptedWorker = isWorker && job.workerId === user?.id;
 
   const mapMarkers = useMemo(() => (
     job?.latitude && job?.longitude ? [{
@@ -172,9 +175,11 @@ export default function JobDetails() {
               </Button>
             ) : null}
 
-            <Button variant="outline" size="lg" className="w-full" asChild>
-              <Link to="/chat"><MessageCircle className="h-4 w-4" /> مراسلة صاحب العمل</Link>
-            </Button>
+            {(isAcceptedWorker || isJobOwner) && (
+              <Button variant="outline" size="lg" className="w-full" asChild>
+                <Link to={`/chat`}><MessageCircle className="h-4 w-4" /> مراسلة {isAcceptedWorker ? "صاحب العمل" : "العامل"}</Link>
+              </Button>
+            )}
           </aside>
         </div>
       </div>
