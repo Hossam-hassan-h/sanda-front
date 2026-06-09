@@ -10,7 +10,7 @@ interface UsePaginationReturn {
   setTotalItems: (total: number) => void;
 }
 
-export function usePagination(initialPage = 1, initialPageSize = 10): UsePaginationReturn {
+export function useServerPagination(initialPage = 1, initialPageSize = 10): UsePaginationReturn {
   const [page, setPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [totalItems, setTotalItems] = useState(0);

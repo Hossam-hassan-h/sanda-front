@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { usePagination } from "./usePagination";
+import { useServerPagination } from "./useServerPagination";
 import { useFilters, type FilterState } from "./useFilters";
 import { useSearch } from "./useSearch";
 import { useSorting } from "./useSorting";
@@ -58,7 +58,7 @@ export function useAdminTable({
   initialFilters = {},
   debounceMs = 300,
 }: UseAdminTableParams = {}): UseAdminTableReturn {
-  const pagination = usePagination(initialPage, initialPageSize);
+  const pagination = useServerPagination(initialPage, initialPageSize);
   const filters = useFilters(initialFilters);
   const search = useSearch(debounceMs);
   const sorting = useSorting();

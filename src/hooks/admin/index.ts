@@ -1,4 +1,4 @@
-export { usePagination } from "./usePagination";
+export { useServerPagination } from "./useServerPagination";
 export { useFilters } from "./useFilters";
 export { useSearch } from "./useSearch";
 export { useSorting } from "./useSorting";
