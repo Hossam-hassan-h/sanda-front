@@ -56,7 +56,7 @@ export default function Verification() {
                 </div>
               </div>
               <Badge variant="outline" className={user.isVerified ? "bg-success/10 text-success border-success/20" : "bg-warning/10 text-warning border-warning/20"}>
-                {user.isVerified ? "موثّق" : "قيد المراجعة"}
+                {user.isVerified ? "موثّق" : "غير موثّق"}
               </Badge>
             </div>
           </CardHeader>

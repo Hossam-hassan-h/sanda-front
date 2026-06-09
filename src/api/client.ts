@@ -17,6 +17,10 @@ api.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem("sanda_token");
       localStorage.removeItem("sanda_user");
+      // Redirect to login on 401 (skip if already on auth pages)
+      if (!window.location.pathname.startsWith("/auth")) {
+        window.location.href = "/auth/login";
+      }
     }
     return Promise.reject(err);
   }

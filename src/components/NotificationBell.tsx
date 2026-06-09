@@ -42,7 +42,7 @@ export default memo(function NotificationBell() {
       {/* Bell Button */}
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-full hover:bg-accent transition-colors"
+        className="relative p-3 rounded-full hover:bg-accent transition-colors"
         aria-label="الإشعارات"
       >
         <Bell className="w-5 h-5" />

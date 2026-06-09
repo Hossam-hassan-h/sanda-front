@@ -1,13 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, Filter, Search, Download, Calendar, User, type LucideIcon } from "lucide-react";
 import AdminLayout from "@/layouts/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { mockUserLogs, mockUsers } from "@/lib/mock/data";
+import { userLogsApi } from "@/api/userLogs";
+import { usersApi } from "@/services/api/admin-api";
 import { cn } from "@/lib/utils";
+import type { UserLog, User } from "@/api/types";
 
 const TARGET_TYPES = [
   { value: "all", label: "كل الأهداف" },
@@ -40,10 +43,24 @@ export default function AdminUserLogs() {
   const [query, setQuery] = useState("");
   const [userId, setUserId] = useState<string>("all");
   const [targetType, setTargetType] = useState<string>("all");
+  const [logs, setLogs] = useState<UserLog[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      userLogsApi.list(),
+      usersApi.list(),
+    ]).then(([logsData, usersData]) => {
+      setLogs(logsData);
+      setUsers(usersData);
+      setLoading(false);
+    });
+  }, []);
 
   const filtered = useMemo(() => {
-    return mockUserLogs.filter((l) => {
-      const user = mockUsers.find((u) => u.id === l.userId);
+    return logs.filter((l) => {
+      const user = users.find((u) => u.id === l.userId);
       const matchQ =
         !query ||
         l.action.includes(query) ||
@@ -53,12 +70,12 @@ export default function AdminUserLogs() {
       const matchT = targetType === "all" || l.targetType === targetType;
       return matchQ && matchU && matchT;
     });
-  }, [query, userId, targetType]);
+  }, [query, userId, targetType, logs, users]);
 
-  const totalLogs = mockUserLogs.length;
-  const uniqueUsers = new Set(mockUserLogs.map((l) => l.userId)).size;
+  const totalLogs = logs.length;
+  const uniqueUsers = new Set(logs.map((l) => l.userId)).size;
   const today = new Date().toISOString().slice(0, 10);
-  const todayCount = mockUserLogs.filter((l) => l.createdAt.startsWith(today)).length;
+  const todayCount = logs.filter((l) => l.createdAt.startsWith(today)).length;
 
   const handleExport = () => {
     const rows = [
@@ -73,6 +90,18 @@ export default function AdminUserLogs() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <Skeleton className="h-8 w-48 mb-6" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20" />)}
+        </div>
+        <Skeleton className="h-64" />
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -110,7 +139,7 @@ export default function AdminUserLogs() {
               <SelectTrigger><SelectValue placeholder="كل المستخدمين" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل المستخدمين</SelectItem>
-                {mockUsers.map((u) => (
+                {users.map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -151,7 +180,7 @@ export default function AdminUserLogs() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filtered.map((l) => {
-                      const user = mockUsers.find((u) => u.id === l.userId);
+                      const user = users.find((u) => u.id === l.userId);
                       const meta = ACTION_META[l.action] ?? FALLBACK_ACTION;
                       return (
                         <tr key={l.id} className={cn("hover:bg-muted/20")}>
@@ -180,7 +209,7 @@ export default function AdminUserLogs() {
               {/* Mobile cards */}
               <div className="block md:hidden p-4 space-y-3">
                 {filtered.map((l) => {
-                  const user = mockUsers.find((u) => u.id === l.userId);
+                  const user = users.find((u) => u.id === l.userId);
                   const meta = ACTION_META[l.action] ?? FALLBACK_ACTION;
                   return (
                     <Card key={l.id} className="border border-border">

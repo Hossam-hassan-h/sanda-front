@@ -19,7 +19,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem("sanda_user");
     return stored ? JSON.parse(stored) : null;
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Validate token on app load
+  useEffect(() => {
+    const token = localStorage.getItem("sanda_token");
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+    authApi.me()
+      .then((u) => {
+        setUser(u);
+        localStorage.setItem("sanda_user", JSON.stringify(u));
+      })
+      .catch(() => {
+        setUser(null);
+        localStorage.removeItem("sanda_user");
+        localStorage.removeItem("sanda_token");
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const persist = useCallback((u: User | null, token?: string) => {
     setUser(u);
@@ -56,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [persist]);
 
   const switchRole = useCallback((role: UserRole) => {
+    if (import.meta.env.PROD) return;
     setUser((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, role };

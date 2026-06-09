@@ -14,8 +14,8 @@ export const useMessages = (conversationId: string) =>
 export const useSendMessage = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ conversationId, message }: { conversationId: string; message: string }) =>
-      chatApi.send(conversationId, message),
+    mutationFn: ({ conversationId, message, attachments }: { conversationId: string; message: string; attachments?: File[] }) =>
+      chatApi.send(conversationId, message, attachments),
     onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ["messages", vars.conversationId] }),
   });
 };

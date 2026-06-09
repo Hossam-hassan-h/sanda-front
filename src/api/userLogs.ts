@@ -1,9 +1,7 @@
 import api, { USE_MOCKS } from "./client";
+import { mockDelay } from "@/lib/mock/utils";
 import type { UserLog } from "./types";
 import { mockUserLogs } from "@/lib/mock/data";
-
-const delay = <T>(value: T, ms = 300) =>
-  new Promise<T>((r) => setTimeout(() => r(value), ms));
 
 export interface UserLogFilters {
   userId?: string;
@@ -22,7 +20,7 @@ export const userLogsApi = {
       if (filters.from) result = result.filter((l) => l.createdAt >= filters.from!);
       if (filters.to) result = result.filter((l) => l.createdAt <= filters.to!);
       result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      return delay(result);
+      return mockDelay(result);
     }
     const { data } = await api.get<UserLog[]>("/admin/user-logs", { params: filters });
     return data;
@@ -31,7 +29,7 @@ export const userLogsApi = {
   /** Get activity logs for a single user (admin or self). */
   async forUser(userId: string): Promise<UserLog[]> {
     if (USE_MOCKS) {
-      return delay(
+      return mockDelay(
         mockUserLogs
           .filter((l) => l.userId === userId)
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt))

@@ -1,9 +1,7 @@
 import api, { USE_MOCKS } from "./client";
+import { mockDelay } from "@/lib/mock/utils";
 import { mockReports, mockUsers } from "@/lib/mock/data";
 import type { CreateReportPayload, Report, ApiSuccessResponse } from "./types";
-
-const delay = <T>(value: T, ms = 300) =>
-  new Promise<T>((r) => setTimeout(() => r(value), ms));
 
 export const reportsApi = {
   /** Submit a new report against a user (optionally tied to a job). */

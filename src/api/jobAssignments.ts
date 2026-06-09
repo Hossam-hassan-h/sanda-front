@@ -1,8 +1,6 @@
 import api, { USE_MOCKS } from "./client";
+import { mockDelay } from "@/lib/mock/utils";
 import type { JobAssignment, ApiSuccessResponse } from "./types";
-
-const delay = <T>(value: T, ms = 300) =>
-  new Promise<T>((r) => setTimeout(() => r(value), ms));
 
 // Mock data for job assignments
 const mockAssignments: JobAssignment[] = [

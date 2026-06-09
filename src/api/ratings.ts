@@ -1,9 +1,7 @@
 import api, { USE_MOCKS } from "./client";
+import { mockDelay } from "@/lib/mock/utils";
 import type { Rating, CreateRatingPayload, ApiSuccessResponse } from "./types";
 import { mockRatings, mockUsers } from "@/lib/mock/data";
-
-const delay = <T>(value: T, ms = 300) =>
-  new Promise<T>((r) => setTimeout(() => r(value), ms));
 
 export const ratingsApi = {
   /** List ratings for a specific user */

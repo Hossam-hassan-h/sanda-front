@@ -5,8 +5,9 @@ import UserLayout from "@/layouts/UserLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import StarRating from "@/components/StarRating";
-import { mockUsers } from "@/lib/mock/data";
+import { authApi } from "@/api/auth";
 import { useRatings } from "@/hooks/useJobs";
 import { useAuth } from "@/context/AuthContext";
 import EditProfileModal from "@/components/EditProfileModal";
@@ -16,31 +17,31 @@ import type { User } from "@/api/types";
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
   const { user: authUser } = useAuth();
-  const [profileUser, setProfileUser] = useState<User>(() => {
-    if (!id && authUser) return authUser;
-    if (authUser && authUser.id === id) {
-      const stored = localStorage.getItem("sanda_user");
-      return stored ? JSON.parse(stored) : authUser;
-    }
-    return mockUsers.find((u) => u.id === id) ?? mockUsers[0];
-  });
-  const { data: ratings } = useRatings(profileUser.id);
+  const [profileUser, setProfileUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { data: ratings } = useRatings(profileUser?.id ?? "");
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id && authUser) {
       setProfileUser(authUser);
+      setLoading(false);
     } else if (authUser && authUser.id === id) {
-      const stored = localStorage.getItem("sanda_user");
-      setProfileUser(stored ? JSON.parse(stored) : authUser);
-    } else {
-      setProfileUser(mockUsers.find((u) => u.id === id) ?? mockUsers[0]);
+      setProfileUser(authUser);
+      setLoading(false);
+    } else if (id) {
+      setLoading(true);
+      authApi.getUser(id).then((u) => {
+        setProfileUser(u);
+        setLoading(false);
+      });
     }
   }, [id, authUser]);
 
-  const isOwnProfile = authUser !== null && authUser.id === profileUser.id;
+  const isOwnProfile = authUser !== null && profileUser !== null && authUser.id === profileUser.id;
 
   const handleProfileUpdate = (updated: Partial<User>) => {
+    if (!profileUser) return;
     const merged = { ...profileUser, ...updated };
     localStorage.setItem("sanda_user", JSON.stringify(merged));
     setProfileUser(merged);
@@ -49,6 +50,18 @@ export default function Profile() {
       description: "تم تحديث بيانات ملفك الشخصي بنجاح.",
     });
   };
+
+  if (loading || !profileUser) {
+    return (
+      <UserLayout>
+        <div className="container mx-auto px-4 md:px-6 py-10 max-w-4xl">
+          <Skeleton className="h-48 w-full mb-6" />
+          <Skeleton className="h-32 w-full mb-6" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      </UserLayout>
+    );
+  }
 
   return (
     <UserLayout>

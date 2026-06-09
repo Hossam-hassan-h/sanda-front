@@ -1,22 +1,47 @@
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MapPin, ShieldCheck, Calendar, Star, Briefcase, MessageSquare, ArrowLeft } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import RatingStars from "@/components/RatingStars";
-import { mockUsers } from "@/lib/mock/data";
+import { authApi } from "@/api/auth";
 import { useUserRatings } from "@/hooks/useRatings";
+import type { User } from "@/api/types";
 
 export default function WorkerProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const user = mockUsers.find((u) => u.id === id) ?? mockUsers[0];
-  const { data: ratings, isLoading } = useUserRatings(user.id);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { data: ratings, isLoading: ratingsLoading } = useUserRatings(id ?? "");
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    authApi.getUser(id).then((u) => {
+      setUser(u);
+      setLoading(false);
+    });
+  }, [id]);
 
   const handleMessage = () => {
     navigate("/chat");
   };
+
+  if (loading || !user) {
+    return (
+      <UserLayout>
+        <div className="container mx-auto px-4 md:px-6 py-8 max-w-4xl" dir="rtl">
+          <Skeleton className="h-8 w-48 mb-6" />
+          <Skeleton className="h-48 w-full mb-6" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </UserLayout>
+    );
+  }
 
   return (
     <UserLayout>
@@ -122,7 +147,7 @@ export default function WorkerProfile() {
         <div className="bg-card border border-border rounded-2xl p-6">
           <h3 className="font-heading font-bold text-base mb-4">آراء العملاء ({ratings?.length || 0})</h3>
           <div className="space-y-4">
-            {isLoading ? (
+            {ratingsLoading ? (
               <p className="text-sm text-muted-foreground text-center">جاري تحميل الآراء...</p>
             ) : ratings && ratings.length > 0 ? (
               ratings.map((r) => (

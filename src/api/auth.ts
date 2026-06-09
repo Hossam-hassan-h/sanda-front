@@ -42,4 +42,18 @@ export const authApi = {
     const { data } = await api.get("/auth/me");
     return data;
   },
+
+  async getUser(id: string): Promise<User> {
+    if (USE_MOCKS) {
+      const cached = localStorage.getItem("sanda_user");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.id === id) return mockDelay(parsed);
+      }
+      const user = mockUsers.find((u) => u.id === id);
+      return mockDelay(user ?? mockUsers[0]);
+    }
+    const { data } = await api.get(`/users/${id}`);
+    return data;
+  },
 };

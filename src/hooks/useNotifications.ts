@@ -29,19 +29,21 @@ export const useUnreadCount = (role?: string) =>
 function useNotificationMutation<TArgs>(
   mutationFn: (args: TArgs) => Promise<unknown>,
   optimisticUpdate: (old: Notification[] | undefined, args: TArgs) => Notification[],
-): UseMutationResult<unknown, Error, TArgs, { prev: Notification[] | undefined }> {
+): UseMutationResult<unknown, Error, TArgs, { prev: [readonly unknown[], Notification[] | undefined][] }> {
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn,
     onMutate: async (args) => {
       await qc.cancelQueries({ queryKey: NOTIF_KEY });
-      const prev = qc.getQueryData<Notification[]>(NOTIF_KEY);
-      qc.setQueryData<Notification[]>(NOTIF_KEY, (old) => optimisticUpdate(old, args));
+      const prev = qc.getQueriesData<Notification[]>({ queryKey: NOTIF_KEY });
+      qc.setQueriesData<Notification[]>({ queryKey: NOTIF_KEY }, (old) => optimisticUpdate(old, args));
       return { prev };
     },
     onError: (_err, _args, ctx) => {
-      if (ctx?.prev) qc.setQueryData(NOTIF_KEY, ctx.prev);
+      if (ctx?.prev) {
+        ctx.prev.forEach(([key, data]) => qc.setQueryData(key, data));
+      }
     },
     onSettled: (_data, error) => {
       if (error) {

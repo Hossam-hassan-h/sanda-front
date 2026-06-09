@@ -158,12 +158,20 @@ export interface ConversationParticipant {
   conversationId: string;
 }
 
+export interface MessageAttachment {
+  name: string;
+  url: string;
+  size: number;
+  type: string;
+}
+
 export interface Message {
   id: string;
   conversationId: string;
   senderId: string;
-  sender?: UserSummary;    // Denormalized
+  sender?: UserSummary;
   message: string;
+  attachments?: MessageAttachment[];
   isRead: boolean;
   createdAt: string;
 }
@@ -312,6 +320,7 @@ export interface CreateReportPayload {
 
 export interface SendMessagePayload {
   message: string;
+  attachments?: { name: string; size: number; type: string; data: string }[];
 }
 
 export interface WithdrawPayload {

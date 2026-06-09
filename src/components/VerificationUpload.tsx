@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Upload, CheckCircle2, ShieldCheck, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Upload, CheckCircle2, ShieldCheck, Loader2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
@@ -9,22 +9,63 @@ interface VerificationUploadProps {
   onSuccess?: () => void;
 }
 
+function FileUploadZone({
+  refObject,
+  onChange,
+  label,
+  fileName,
+  placeholder,
+  icon: Icon,
+}: {
+  refObject: React.RefObject<HTMLInputElement>;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  label: string;
+  fileName: string | null;
+  placeholder: string;
+  icon: React.ElementType;
+}) {
+  const IconComponent = Icon;
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-bold">{label}</Label>
+      <div
+        role="button"
+        tabIndex={0}
+        className="border border-dashed rounded-xl p-4 flex flex-col items-center justify-center hover:bg-muted/30 cursor-pointer"
+        onClick={() => refObject.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            refObject.current?.click();
+          }
+        }}
+      >
+        <input
+          ref={refObject}
+          type="file"
+          accept="image/*"
+          onChange={onChange}
+          className="sr-only"
+        />
+        <IconComponent className="w-8 h-8 text-muted-foreground mb-2" />
+        <span className="text-xs font-semibold">
+          {fileName || placeholder}
+        </span>
+        <span className="text-[10px] text-muted-foreground mt-1">PNG, JPG حتى 5MB</span>
+      </div>
+    </div>
+  );
+}
+
 export default function VerificationUpload({ onSuccess }: VerificationUploadProps) {
+  const frontRef = useRef<HTMLInputElement>(null);
+  const backRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
   const [nationalIdFront, setNationalIdFront] = useState<File | null>(null);
   const [nationalIdBack, setNationalIdBack] = useState<File | null>(null);
+  const [personalPhoto, setPersonalPhoto] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [step, setStep] = useState<"upload" | "pending">("upload");
-
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    type: "front" | "back"
-  ) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (type === "front") setNationalIdFront(file);
-      else if (type === "back") setNationalIdBack(file);
-    }
-  };
 
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +80,6 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
 
     setUploading(true);
 
-    // Simulate uploading documents to server
     setTimeout(() => {
       setUploading(false);
       setStep("pending");
@@ -66,41 +106,38 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
               </p>
             </div>
 
-            {/* National ID Front */}
-            <div className="space-y-2">
-              <Label className="text-sm font-bold">صورة بطاقة الرقم القومي (من الأمام)</Label>
-              <div className="border border-dashed rounded-xl p-4 flex flex-col items-center justify-center hover:bg-muted/30 cursor-pointer relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e, "front")}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                <span className="text-xs font-semibold">
-                  {nationalIdFront ? nationalIdFront.name : "اضغط لرفع الصورة (أمام)"}
-                </span>
-                <span className="text-[10px] text-muted-foreground mt-1">PNG, JPG حتى 5MB</span>
-              </div>
-            </div>
+            <FileUploadZone
+              refObject={frontRef}
+              onChange={(e) => {
+                if (e.target.files?.[0]) setNationalIdFront(e.target.files[0]);
+              }}
+              label="صورة بطاقة الرقم القومي (من الأمام)"
+              fileName={nationalIdFront?.name ?? null}
+              placeholder="اضغط لرفع الصورة (أمام)"
+              icon={Upload}
+            />
 
-            {/* National ID Back */}
-            <div className="space-y-2">
-              <Label className="text-sm font-bold">صورة بطاقة الرقم القومي (من الخلف)</Label>
-              <div className="border border-dashed rounded-xl p-4 flex flex-col items-center justify-center hover:bg-muted/30 cursor-pointer relative">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e, "back")}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                <span className="text-xs font-semibold">
-                  {nationalIdBack ? nationalIdBack.name : "اضغط لرفع الصورة (خلف)"}
-                </span>
-                <span className="text-[10px] text-muted-foreground mt-1">PNG, JPG حتى 5MB</span>
-              </div>
-            </div>
+            <FileUploadZone
+              refObject={backRef}
+              onChange={(e) => {
+                if (e.target.files?.[0]) setNationalIdBack(e.target.files[0]);
+              }}
+              label="صورة بطاقة الرقم القومي (من الخلف)"
+              fileName={nationalIdBack?.name ?? null}
+              placeholder="اضغط لرفع الصورة (خلف)"
+              icon={Upload}
+            />
+
+            <FileUploadZone
+              refObject={photoRef}
+              onChange={(e) => {
+                if (e.target.files?.[0]) setPersonalPhoto(e.target.files[0]);
+              }}
+              label="صورة شخصية واضحة (اختياري)"
+              fileName={personalPhoto?.name ?? null}
+              placeholder="اضغط لرفع الصورة الشخصية"
+              icon={User}
+            />
 
             <Button type="submit" className="w-full py-5 font-bold" disabled={uploading}>
               {uploading ? (

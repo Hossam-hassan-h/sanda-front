@@ -1,4 +1,4 @@
-import { USE_MOCKS } from "@/api/client";
+import api, { USE_MOCKS } from "@/api/client";
 
 export interface PaymentDetails {
   amount: number;
@@ -22,10 +22,8 @@ export const paymentService = {
       });
     }
 
-    // In production, invoke real endpoint:
-    // const { data } = await api.post("/payments/create-session", details);
-    // return data;
-    throw new Error("Backend not configured");
+    const { data } = await api.post("/payments/create-session", details);
+    return data;
   },
 
   /** Verify payment status after callback */
@@ -41,8 +39,7 @@ export const paymentService = {
       });
     }
 
-    // const { data } = await api.get(`/payments/verify/${paymentId}`);
-    // return data;
-    throw new Error("Backend not configured");
+    const { data } = await api.get(`/payments/verify/${paymentId}`);
+    return data;
   },
 };

@@ -1,3 +1,4 @@
+import { io, type Socket } from "socket.io-client";
 import { USE_MOCKS } from "@/api/client";
 
 type SocketPayload = Record<string, unknown>;
@@ -22,12 +23,10 @@ class MockSocket {
   }
 
   emit(event: string, data: SocketPayload) {
-    // Simulate server side actions in mock mode
     if (event === "join_room") {
       console.log(`[MockSocket] Joined room: ${data}`);
     } else if (event === "sos_trigger") {
       console.log(`[MockSocket] Worker triggered SOS:`, data);
-      // Broadcast SOS back to all listeners of 'sos_alert' after a delay
       setTimeout(() => {
         this.trigger("sos_alert", {
           id: "sos-" + Date.now(),
@@ -41,7 +40,6 @@ class MockSocket {
       }, 1000);
     } else if (event === "send_message") {
       console.log(`[MockSocket] Message sent:`, data);
-      // Simulate receiver typing and replying
       setTimeout(() => {
         this.trigger("new_message", {
           id: "msg-" + Date.now(),
@@ -56,7 +54,6 @@ class MockSocket {
     return this;
   }
 
-  // Helper method to trigger events internally
   public trigger(event: string, data: SocketPayload) {
     if (this.listeners[event]) {
       this.listeners[event].forEach((cb) => cb(data));
@@ -76,10 +73,9 @@ class MockSocket {
   }
 }
 
-// Global socket instance
-export const socket = new MockSocket();
+function createRealSocket(): Socket {
+  const url = import.meta.env.VITE_WS_URL || "http://localhost:5000";
+  return io(url, { autoConnect: false });
+}
 
-// In a real application, you would initialize it using socket.io-client:
-// import { io } from "socket.io-client";
-// const socketUrl = import.meta.env.VITE_WS_URL || "http://localhost:5000";
-// export const socket = io(socketUrl, { autoConnect: false });
+export const socket = USE_MOCKS ? new MockSocket() : createRealSocket();

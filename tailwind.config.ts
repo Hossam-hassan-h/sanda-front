@@ -15,8 +15,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ["Cairo", "system-ui", "sans-serif"],
-        body: ["Cairo", "system-ui", "sans-serif"],
+        heading: ["Noto Naskh Arabic", "Cairo", "system-ui", "sans-serif"],
+        body: ["Cairo", "Noto Sans Arabic", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -79,6 +79,15 @@ export default {
         sm: "calc(var(--radius) - 4px)",
         xl: "1rem",
         "2xl": "1.5rem",
+      },
+      zIndex: {
+        dropdown: "50",
+        sticky: "100",
+        "modal-backdrop": "200",
+        modal: "300",
+        popover: "400",
+        tooltip: "500",
+        toast: "600",
       },
       keyframes: {
         "accordion-down": {
