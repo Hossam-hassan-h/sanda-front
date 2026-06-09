@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { MapPin, Clock, Calendar, Users, Star, ShieldCheck, MessageCircle, ArrowLeft } from "lucide-react";
+import { MapPin, Clock, Calendar, Users, Star, ShieldCheck, MessageCircle, ArrowLeft, QrCode } from "lucide-react";
 import MapView from "@/components/MapView";
 import UserLayout from "@/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
@@ -36,27 +36,24 @@ export default function JobDetails() {
 
   const isWorker = user?.role === "worker";
   const isEmployer = user?.role === "employer";
-  const isJobOwner = isEmployer && job.employerId === user?.id;
-  const isAcceptedWorker = isWorker && job.workerId === user?.id;
-
-  const mapMarkers = useMemo(() => (
-    job?.latitude && job?.longitude ? [{
-      id: job.id,
-      lat: job.latitude,
-      lng: job.longitude,
-      title: job.address,
-      subtitle: job.city,
-    }] : []
-  ), [job]);
-
-  const mapCenter = useMemo(() => (
-    job?.latitude && job?.longitude
-      ? { lat: job.latitude, lng: job.longitude, timestamp: 0 } as GeoCoordinates
-      : undefined
-  ), [job]);
 
   if (isLoading) return <UserLayout><div className="container mx-auto px-4 py-10"><Skeleton className="h-96 rounded-xl" /></div></UserLayout>;
   if (!job) return <UserLayout><div className="container mx-auto px-4 py-20 text-center text-muted-foreground">الوظيفة غير موجودة.</div></UserLayout>;
+
+  const isJobOwner = isEmployer && job.employerId === user?.id;
+  const isAcceptedWorker = isWorker && job.workerId === user?.id;
+
+  const hasCoords = job.latitude && job.longitude;
+  const mapMarkers = hasCoords ? [{
+    id: job.id,
+    lat: job.latitude!,
+    lng: job.longitude!,
+    title: job.address,
+    subtitle: job.city,
+  }] : [];
+  const mapCenter: GeoCoordinates | undefined = hasCoords
+    ? { lat: job.latitude!, lng: job.longitude!, timestamp: 0 }
+    : undefined;
 
   return (
     <UserLayout>
@@ -125,7 +122,7 @@ export default function JobDetails() {
                   <div className="font-semibold">{job.employer.name}</div>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Star className="h-3.5 w-3.5 fill-accent text-accent" />
-                    {job.employer.rating?.toFixed(1)} تقييم
+                    {job.employer.rating?.toFixed(1) ?? "0.0"} تقييم
                   </div>
                 </div>
               </Link>
@@ -175,7 +172,30 @@ export default function JobDetails() {
               </Button>
             ) : null}
 
-            {(isAcceptedWorker || isJobOwner) && (
+            {/* أزرار للمستخدمين المقبولين في الوظيفة */}
+            {(isAcceptedWorker || isJobOwner) && job.status === "in-progress" && (
+              <div className="space-y-2">
+                <Button variant="accent" size="lg" className="w-full" asChild>
+                  <Link to={`/jobs/${job.id}/active`}>
+                    <QrCode className="h-4 w-4" /> 
+                    {isAcceptedWorker ? "تسجيل الحضور بالـ QR" : "عرض QR Code والحضور"}
+                  </Link>
+                </Button>
+                {isJobOwner && (
+                  <Button variant="default" size="lg" className="w-full" asChild>
+                    <Link to={`/jobs/${job.id}/assignments`}>
+                      إدارة الحضور
+                    </Link>
+                  </Button>
+                )}
+                <Button variant="outline" size="lg" className="w-full" asChild>
+                  <Link to={`/chat`}><MessageCircle className="h-4 w-4" /> مراسلة {isAcceptedWorker ? "صاحب العمل" : "العامل"}</Link>
+                </Button>
+              </div>
+            )}
+
+            {/* شات فقط لو مكتملة */}
+            {(isAcceptedWorker || isJobOwner) && job.status !== "in-progress" && (
               <Button variant="outline" size="lg" className="w-full" asChild>
                 <Link to={`/chat`}><MessageCircle className="h-4 w-4" /> مراسلة {isAcceptedWorker ? "صاحب العمل" : "العامل"}</Link>
               </Button>

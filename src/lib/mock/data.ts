@@ -8,8 +8,78 @@ import type {
   Report,
   User,
   UserLog,
+  VerificationDocument,
+  VerificationRequest,
   WalletTransaction,
 } from "@/api/types";
+
+/**
+ * Mock verification documents for users who have submitted a verification request.
+ * These are public placeholder images so admins can preview the review UI
+ * without having to manually upload files.
+ */
+const SAMPLE_ID_FRONT =
+  "https://images.unsplash.com/photo-1629991841129-4f9c4a4a4b1e?w=600&h=400&fit=crop";
+const SAMPLE_ID_BACK =
+  "https://images.unsplash.com/photo-1611689342806-0863700ce1e4?w=600&h=400&fit=crop";
+const SAMPLE_SELFIE =
+  "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop";
+
+function sampleDocs(prefix: string): VerificationDocument[] {
+  return [
+    {
+      id: `${prefix}-front`,
+      type: "national_id_front",
+      name: "id-front.jpg",
+      url: SAMPLE_ID_FRONT,
+      size: 482_192,
+      uploadedAt: new Date().toISOString(),
+    },
+    {
+      id: `${prefix}-back`,
+      type: "national_id_back",
+      name: "id-back.jpg",
+      url: SAMPLE_ID_BACK,
+      size: 511_443,
+      uploadedAt: new Date().toISOString(),
+    },
+    {
+      id: `${prefix}-photo`,
+      type: "personal_photo",
+      name: "selfie.jpg",
+      url: SAMPLE_SELFIE,
+      size: 235_881,
+      uploadedAt: new Date().toISOString(),
+    },
+  ];
+}
+
+/** Mock pending request — user uploaded docs and is waiting for admin review */
+function mockPendingRequest(daysAgo: number): VerificationRequest {
+  const submitted = new Date();
+  submitted.setDate(submitted.getDate() - daysAgo);
+  return {
+    status: "pending",
+    documents: sampleDocs(`vd-mock-${Math.random().toString(36).slice(2, 8)}`),
+    submittedAt: submitted.toISOString(),
+  };
+}
+
+/** Mock rejected request — admin already rejected with a reason */
+function mockRejectedRequest(daysAgo: number, reason: string): VerificationRequest {
+  const submitted = new Date();
+  submitted.setDate(submitted.getDate() - daysAgo - 1);
+  const reviewed = new Date();
+  reviewed.setDate(reviewed.getDate() - daysAgo);
+  return {
+    status: "rejected",
+    documents: sampleDocs(`vd-mock-${Math.random().toString(36).slice(2, 8)}`),
+    submittedAt: submitted.toISOString(),
+    reviewedAt: reviewed.toISOString(),
+    reviewedBy: "admin",
+    rejectionReason: reason,
+  };
+}
 
 export const mockUsers: User[] = [
   {
@@ -62,6 +132,68 @@ export const mockUsers: User[] = [
     createdAt: "2026-01-10",
     updatedAt: "2026-01-10",
     isActive: true,
+    // مستنداته مرفوعة وفي انتظار مراجعة الأدمن
+    verificationRequest: mockPendingRequest(1),
+  },
+  // مستخدم جديد رفع مستنداته ومستني الأدمن يراجعها
+  {
+    id: "u6",
+    name: "كريم سعيد",
+    email: "karim@worker.com",
+    phone: "01000000006",
+    role: "worker",
+    walletBalance: 450,
+    isVerified: false,
+    rating: 0,
+    ratingsCount: 0,
+    skills: ["سباكة", "كهرباء"],
+    city: "القاهرة",
+    avatar: "https://i.pravatar.cc/150?img=68",
+    createdAt: "2026-05-15",
+    updatedAt: "2026-05-15",
+    isActive: true,
+    verificationRequest: mockPendingRequest(2),
+  },
+  // مستخدم تم رفض طلبه بسبب صورة غير واضحة
+  {
+    id: "u7",
+    name: "هند مصطفى",
+    email: "hend@worker.com",
+    phone: "01000000007",
+    role: "worker",
+    walletBalance: 600,
+    isVerified: false,
+    rating: 4.1,
+    ratingsCount: 5,
+    skills: ["تنظيف", "ترتيب"],
+    city: "الجيزة",
+    avatar: "https://i.pravatar.cc/150?img=45",
+    createdAt: "2026-04-20",
+    updatedAt: "2026-04-20",
+    isActive: true,
+    verificationRequest: mockRejectedRequest(
+      2,
+      "الصورة الخلفية للبطاقة غير واضحة. يرجى إعادة الرفع بصورة أوضح."
+    ),
+  },
+  // مستخدم آخر في انتظار المراجعة (طلب جديد)
+  {
+    id: "u8",
+    name: "يوسف العبد",
+    email: "youssef@worker.com",
+    phone: "01000000008",
+    role: "worker",
+    walletBalance: 200,
+    isVerified: false,
+    rating: 4.5,
+    ratingsCount: 12,
+    skills: ["نقاشة", "دهانات"],
+    city: "الإسكندرية",
+    avatar: "https://i.pravatar.cc/150?img=11",
+    createdAt: "2026-03-01",
+    updatedAt: "2026-03-01",
+    isActive: true,
+    verificationRequest: mockPendingRequest(0),
   },
   {
     id: "u4",

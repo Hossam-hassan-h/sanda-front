@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/context/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
+import type { VerificationDocument } from "@/api/types";
 
 interface VerificationUploadProps {
   onSuccess?: () => void;
@@ -57,7 +60,55 @@ function FileUploadZone({
   );
 }
 
+/** Convert a File to a base64 data URL so it can be stored in localStorage */
+function readFileAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+const STORAGE_KEY = "sanda_verification_requests";
+
+/** Save the verification request both to the user (in localStorage) and to a global map for admins */
+function persistVerificationRequest(
+  userId: string,
+  documents: VerificationDocument[]
+) {
+  const request = {
+    status: "pending" as const,
+    documents,
+    submittedAt: new Date().toISOString(),
+  };
+
+  // Update the user's localStorage profile
+  try {
+    const stored = localStorage.getItem("sanda_user");
+    if (stored) {
+      const user = JSON.parse(stored);
+      user.verificationRequest = request;
+      localStorage.setItem("sanda_user", JSON.stringify(user));
+    }
+  } catch {
+    // Ignore parse errors
+  }
+
+  // Save to global map (so admins can see all pending requests)
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const map: Record<string, typeof request> = stored ? JSON.parse(stored) : {};
+    map[userId] = request;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignore
+  }
+}
+
 export default function VerificationUpload({ onSuccess }: VerificationUploadProps) {
+  const { user, updateUser } = useAuth();
+  const queryClient = useQueryClient();
   const frontRef = useRef<HTMLInputElement>(null);
   const backRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -67,7 +118,7 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
   const [uploading, setUploading] = useState(false);
   const [step, setStep] = useState<"upload" | "pending">("upload");
 
-  const handleUploadSubmit = (e: React.FormEvent) => {
+  const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nationalIdFront || !nationalIdBack) {
       toast({
@@ -77,18 +128,61 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
       });
       return;
     }
+    if (!user) return;
 
     setUploading(true);
 
-    setTimeout(() => {
-      setUploading(false);
+    try {
+      const now = new Date().toISOString();
+      const documents: VerificationDocument[] = [
+        {
+          id: `vd-${Date.now()}-front`,
+          type: "national_id_front",
+          name: nationalIdFront.name,
+          url: await readFileAsDataURL(nationalIdFront),
+          size: nationalIdFront.size,
+          uploadedAt: now,
+        },
+        {
+          id: `vd-${Date.now()}-back`,
+          type: "national_id_back",
+          name: nationalIdBack.name,
+          url: await readFileAsDataURL(nationalIdBack),
+          size: nationalIdBack.size,
+          uploadedAt: now,
+        },
+      ];
+      if (personalPhoto) {
+        documents.push({
+          id: `vd-${Date.now()}-photo`,
+          type: "personal_photo",
+          name: personalPhoto.name,
+          url: await readFileAsDataURL(personalPhoto),
+          size: personalPhoto.size,
+          uploadedAt: now,
+        });
+      }
+
+      persistVerificationRequest(user.id, documents);
+      // Refresh user so the page updates immediately
+      updateUser({ verificationRequest: { status: "pending", documents, submittedAt: new Date().toISOString() } });
+      queryClient.invalidateQueries({ queryKey: ["user"] });
+
       setStep("pending");
       toast({
         title: "تم رفع المستندات",
         description: "جاري مراجعة مستنداتك من قبل الإدارة. سيتم تفعيل حسابك خلال ٢٤ ساعة.",
       });
       onSuccess?.();
-    }, 2000);
+    } catch (err) {
+      toast({
+        title: "فشل الرفع",
+        description: "حصل خطأ أثناء رفع المستندات. حاول مرة تانية.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (

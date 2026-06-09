@@ -113,7 +113,21 @@ export const jobsApi = {
   },
 
   async acceptApplicant(applicationId: string): Promise<{ ok: true }> {
-    if (USE_MOCKS) return mockDelay({ ok: true });
+    if (USE_MOCKS) {
+      // Update the application status to accepted
+      const app = mockApplications.find((a) => a.id === applicationId);
+      if (app) {
+        app.status = "accepted";
+        // Update the job status to in-progress and set workerId
+        const job = mockJobs.find((j) => j.id === app.jobId);
+        if (job) {
+          job.status = "in-progress";
+          job.workerId = app.workerId;
+          job.worker = app.worker;
+        }
+      }
+      return mockDelay({ ok: true });
+    }
     const { data } = await api.post(`/applications/${applicationId}/accept`);
     return data;
   },

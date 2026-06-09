@@ -52,6 +52,10 @@ export const usersApi = {
         if (params?.status === "banned" && u2.isActive !== false) return false;
         if (params?.status === "verified" && !u2.isVerified) return false;
         if (params?.status === "unverified" && u2.isVerified) return false;
+        if (params?.status === "pending_verification") {
+          const vr = (u2 as { verificationRequest?: { status: string } }).verificationRequest;
+          if (u2.isVerified || vr?.status !== "pending") return false;
+        }
         return true;
       });
       return mockDelay(createMockPaginatedResponse(filtered, params?.page || 1, params?.pageSize || 10));
@@ -137,7 +141,19 @@ export const usersApi = {
   async verify(id: string): Promise<{ ok: true }> {
     if (USE_MOCKS) {
       const user = richMockUsers.find((u) => u.id === id);
-      if (user) user.isVerified = true;
+      if (user) {
+        user.isVerified = true;
+        // Mark the verification request as approved (preserve documents)
+        if (user.verificationRequest) {
+          user.verificationRequest = {
+            ...user.verificationRequest,
+            status: "approved",
+            reviewedAt: new Date().toISOString(),
+            reviewedBy: "admin",
+            rejectionReason: undefined,
+          };
+        }
+      }
       return mockDelay({ ok: true });
     }
     const { data } = await api.post(`/admin/users/${id}/verify`);

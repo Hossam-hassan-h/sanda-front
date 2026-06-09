@@ -37,6 +37,20 @@ const mockAssignments: JobAssignment[] = [
 ];
 
 export const jobAssignmentsApi = {
+  /** Get the current user ID from localStorage */
+  getCurrentUserId(): string {
+    try {
+      const stored = localStorage.getItem("sanda_user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        return user.id || "u1";
+      }
+    } catch {
+      // Ignore parse errors
+    }
+    return "u1";
+  },
+
   /** Get all assignments for a specific job (for employer) */
   async listByJob(jobId: string): Promise<JobAssignment[]> {
     if (USE_MOCKS) {
@@ -49,7 +63,8 @@ export const jobAssignmentsApi = {
   /** Get all assignments for the current worker */
   async myAssignments(): Promise<JobAssignment[]> {
     if (USE_MOCKS) {
-      return mockDelay(mockAssignments.filter((a) => a.workerId === "u1"));
+      const userId = this.getCurrentUserId();
+      return mockDelay(mockAssignments.filter((a) => a.workerId === userId));
     }
     const { data } = await api.get<JobAssignment[]>("/assignments/mine");
     return data;
@@ -79,12 +94,25 @@ export const jobAssignmentsApi = {
   /** Check-in by scanning QR code (worker) */
   async checkIn(jobId: string, qrCode: string): Promise<JobAssignment> {
     if (USE_MOCKS) {
+      const userId = this.getCurrentUserId();
+      const workerName = (() => {
+        try {
+          const stored = localStorage.getItem("sanda_user");
+          if (stored) {
+            const user = JSON.parse(stored);
+            return user.name || "أحمد المصري";
+          }
+        } catch {
+          // Ignore parse errors
+        }
+        return "أحمد المصري";
+      })();
       const assignment: JobAssignment = {
         id: "ja-" + Date.now(),
         jobId,
         job: { id: jobId, title: "وظيفة جديدة", city: "القاهرة", price: 0 },
-        workerId: "u1",
-        worker: { id: "u1", name: "أحمد المصري", avatar: "https://i.pravatar.cc/150?img=12", rating: 4.8 },
+        workerId: userId,
+        worker: { id: userId, name: workerName, avatar: "https://i.pravatar.cc/150?img=12", rating: 4.8 },
         checkInTime: new Date().toISOString(),
         status: "checked-in",
         createdAt: new Date().toISOString(),

@@ -72,7 +72,11 @@ function DesktopTable<T extends { id: string | number }>({
                 {column.render(item)}
               </TableCell>
             ))}
-            {actions && <TableCell className="text-end">{actions(item)}</TableCell>}
+            {actions && (
+              <TableCell className="text-end" onClick={(e) => e.stopPropagation()}>
+                {actions(item)}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

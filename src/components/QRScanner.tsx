@@ -8,9 +8,10 @@ import { toast } from "@/hooks/use-toast";
 
 interface QRScannerProps {
   jobId?: string;
+  onScanComplete?: (success: boolean) => void;
 }
 
-export default function QRScanner({ jobId }: QRScannerProps) {
+export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
   const [scanning, setScanning] = useState(false);
   const [scannedData, setScannedData] = useState<string>("");
   const [showResult, setShowResult] = useState(false);
@@ -75,6 +76,7 @@ export default function QRScanner({ jobId }: QRScannerProps) {
     } finally {
       setShowResult(true);
       stopCamera();
+      onScanComplete?.(result === "success");
     }
   };
 
@@ -213,7 +215,7 @@ export default function QRScanner({ jobId }: QRScannerProps) {
               ? "تم تسجيل دخولك للعمل. سيتم تحويل المبلغ إلى محفظتك بعد انتهاء العمل."
               : "يرجى التأكد من صحة QR Code والمحاولة مرة أخرى."}
           </div>
-          <Button onClick={() => setShowResult(false)} className="w-full">
+          <Button onClick={() => { setShowResult(false); onScanComplete?.(result === "success"); }} className="w-full">
             حسناً
           </Button>
         </DialogContent>

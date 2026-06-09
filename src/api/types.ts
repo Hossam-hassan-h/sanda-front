@@ -1,5 +1,26 @@
 export type UserRole = "worker" | "employer" | "admin";
 
+export type VerificationStatus = "none" | "pending" | "approved" | "rejected";
+
+export interface VerificationDocument {
+  id: string;
+  type: "national_id_front" | "national_id_back" | "personal_photo";
+  name: string;
+  /** Data URL (base64) or external URL */
+  url: string;
+  size: number;
+  uploadedAt: string;
+}
+
+export interface VerificationRequest {
+  status: VerificationStatus;
+  documents: VerificationDocument[];
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  rejectionReason?: string;
+}
+
 // ============================================================================
 // SUMMARY TYPES (for embedded objects in API responses)
 // ============================================================================
@@ -43,6 +64,8 @@ export interface User {
   city?: string;
   createdAt: string;
   updatedAt?: string;
+  /** Verification request submitted by the user (documents + review state) */
+  verificationRequest?: VerificationRequest;
 }
 
 export type JobStatus = "open" | "in-progress" | "completed" | "cancelled";

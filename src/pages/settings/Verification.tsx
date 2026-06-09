@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ShieldCheck, CheckCircle2, FileCheck, User } from "lucide-react";
+import { ShieldCheck, CheckCircle2, XCircle, FileCheck, User, Clock } from "lucide-react";
 import SettingsLayout from "@/layouts/SettingsLayout";
 import VerificationUpload from "@/components/VerificationUpload";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,11 @@ export default function Verification() {
     );
   }
 
+  // Detect verification request state from user or localStorage
+  const vr = (user as { verificationRequest?: { status: string; documents?: unknown[]; submittedAt?: string; rejectionReason?: string } }).verificationRequest;
+  const isPending = vr?.status === "pending";
+  const isRejected = vr?.status === "rejected";
+
   return (
     <SettingsLayout>
       <div className="w-full" dir="rtl">
@@ -37,26 +42,42 @@ export default function Verification() {
           <CardHeader>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${user.isVerified ? "bg-success/10" : "bg-warning/10"}`}>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${user.isVerified ? "bg-success/10" : isPending ? "bg-blue-100" : isRejected ? "bg-destructive/10" : "bg-warning/10"}`}>
                   {user.isVerified ? (
                     <ShieldCheck className="w-6 h-6 text-success" />
+                  ) : isPending ? (
+                    <Clock className="w-6 h-6 text-blue-600" />
+                  ) : isRejected ? (
+                    <XCircle className="w-6 h-6 text-destructive" />
                   ) : (
                     <ShieldCheck className="w-6 h-6 text-warning" />
                   )}
                 </div>
                 <div>
                   <CardTitle className="text-base">
-                    {user.isVerified ? "حسابك موثّق" : "حسابك غير موثّق"}
+                    {user.isVerified ? "حسابك موثّق" : isPending ? "طلب التوثيق قيد المراجعة" : isRejected ? "تم رفض طلب التوثيق" : "حسابك غير موثّق"}
                   </CardTitle>
                   <CardDescription className="text-xs">
                     {user.isVerified
                       ? "تستطيع استلام مبالغ الـ Escrow والتقديم على كل الوظائف."
+                      : isPending
+                      ? "تم استلام مستنداتك وجاري تدقيها. سنرسل لك إشعاراً عند اتخاذ القرار."
+                      : isRejected
+                      ? `السبب: ${vr?.rejectionReason || "لم يُحدَّد"} — تقدر تعيد رفع المستندات.`
                       : "ارفع المستندات التالية باشان نقدر نراجع حسابك ونفعيل التوثيق."}
                   </CardDescription>
                 </div>
               </div>
-              <Badge variant="outline" className={user.isVerified ? "bg-success/10 text-success border-success/20" : "bg-warning/10 text-warning border-warning/20"}>
-                {user.isVerified ? "موثّق" : "غير موثّق"}
+              <Badge variant="outline" className={
+                user.isVerified
+                  ? "bg-success/10 text-success border-success/20"
+                  : isPending
+                  ? "bg-blue-100 text-blue-700 border-blue-200"
+                  : isRejected
+                  ? "bg-destructive/10 text-destructive border-destructive/20"
+                  : "bg-warning/10 text-warning border-warning/20"
+              }>
+                {user.isVerified ? "موثّق" : isPending ? "قيد المراجعة" : isRejected ? "مرفوض" : "غير موثّق"}
               </Badge>
             </div>
           </CardHeader>
@@ -78,10 +99,8 @@ export default function Verification() {
           </CardContent>
         </Card>
 
-        {/* Upload form */}
-        {!user.isVerified && <VerificationUpload />}
-
-        {user.isVerified && (
+        {/* Upload form / pending / rejected / approved */}
+        {user.isVerified ? (
           <Card>
             <CardContent className="py-10 text-center space-y-3">
               <CheckCircle2 className="w-12 h-12 mx-auto text-success" />
@@ -94,6 +113,54 @@ export default function Verification() {
               </Button>
             </CardContent>
           </Card>
+        ) : isPending ? (
+          <Card>
+            <CardContent className="py-10 text-center space-y-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Clock className="w-8 h-8 text-blue-600 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="font-bold text-lg">المستندات قيد المراجعة</h2>
+                <p className="text-sm text-muted-foreground">
+                  تم استلام مستندات التوثيق بنجاح وجاري تدقيها حالياً.
+                </p>
+                {vr?.submittedAt && (
+                  <p className="text-xs text-muted-foreground">
+                    تم الإرسال في {new Date(vr.submittedAt).toLocaleString("ar-EG")}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 p-3 rounded-lg bg-blue-50/50 border border-blue-100 text-xs text-blue-800 text-right mx-auto max-w-md">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-600" />
+                <span>سنرسل لك إشعاراً فور تفعيل الشارة الخضراء (موثق) على حسابك.</span>
+              </div>
+              <Button variant="outline" onClick={() => navigate(`/profile/${user.id}`)}>
+                الرجوع للملف الشخصي
+              </Button>
+            </CardContent>
+          </Card>
+        ) : isRejected ? (
+          <>
+            <Card className="mb-6 border-destructive/30">
+              <CardContent className="py-8 text-center space-y-3">
+                <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+                  <XCircle className="w-8 h-8 text-destructive" />
+                </div>
+                <h2 className="font-bold text-lg">تم رفض طلب التوثيق</h2>
+                {vr?.rejectionReason && (
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    السبب: {vr.rejectionReason}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  تقدر تراجع الملاحظات وتعيد رفع المستندات مرة تانية.
+                </p>
+              </CardContent>
+            </Card>
+            <VerificationUpload />
+          </>
+        ) : (
+          <VerificationUpload />
         )}
 
         {/* Help */}

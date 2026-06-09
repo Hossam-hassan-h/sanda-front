@@ -1,8 +1,21 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2, Ban, UserX, Briefcase, MapPin, Clock, CircleDollarSign, CalendarDays, ShieldCheck, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  Briefcase,
+  MapPin,
+  Clock,
+  CircleDollarSign,
+  CalendarDays,
+  ShieldCheck,
+  ShieldAlert,
+  User as UserIcon,
+  Star,
+  Wallet,
+  Trash2,
+} from "lucide-react";
 import AdminLayout from "@/layouts/AdminLayout";
-import { useJobQuery, useDeleteJob, useUserQuery, useBanUser, useUnbanUser, useDeleteUser } from "@/hooks/useAdminQueries";
+import { useJobQuery, useDeleteJob, useUserQuery } from "@/hooks/useAdminQueries";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ErrorState } from "@/components/admin/ErrorState";
 import { Button } from "@/components/ui/button";
@@ -11,7 +24,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import type { Job, User } from "@/api/types";
 
 const statusLabel: Record<string, string> = {
   open: "مفتوحة",
@@ -61,6 +73,87 @@ function JobSkeleton() {
   );
 }
 
+function UserInfoCard({
+  user,
+  title,
+  icon,
+  onViewProfile,
+}: {
+  user: import("@/api/types").User | undefined;
+  title: string;
+  icon: ReactNode;
+  onViewProfile?: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          {icon}
+          <CardTitle className="text-lg">{title}</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div
+          className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={onViewProfile}
+        >
+          <Avatar className="w-12 h-12">
+            <AvatarImage src={user?.avatar} />
+            <AvatarFallback>{user?.name?.[0] ?? "?"}</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="font-semibold">{user?.name ?? "غير معروف"}</p>
+            {user?.role && (
+              <Badge variant="outline" className="mt-1">
+                {roleLabel[user.role] ?? user.role}
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">الهاتف</span>
+            <span dir="ltr" className="font-medium">{user?.phone ?? "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">البريد</span>
+            <span className="font-medium text-left">{user?.email ?? "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">المدينة</span>
+            <span className="font-medium">{user?.city ?? "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">الرصيد</span>
+            <span className="font-medium">{user?.walletBalance ?? 0} جنيه</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">تاريخ التسجيل</span>
+            <span className="font-medium">
+              {user?.createdAt
+                ? new Date(user.createdAt).toLocaleDateString("ar-EG")
+                : "—"}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground">الحالة</span>
+            {user?.isActive === false ? (
+              <Badge variant="destructive">محظور</Badge>
+            ) : user?.isVerified ? (
+              <Badge variant="default" className="gap-1"><ShieldCheck className="w-3 h-3" /> موثق</Badge>
+            ) : (
+              <Badge variant="secondary" className="gap-1"><ShieldAlert className="w-3 h-3" /> غير موثق</Badge>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AdminJobDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -68,35 +161,16 @@ export default function AdminJobDetail() {
   const { data: job, isLoading, isError, refetch } = useJobQuery(id!);
 
   const employerId = job?.employerId;
+  const workerId = job?.workerId;
   const { data: publisher } = useUserQuery(employerId ?? null);
+  const { data: worker } = useUserQuery(workerId ?? null);
 
   const deleteJob = useDeleteJob();
-  const banUser = useBanUser();
-  const unbanUser = useUnbanUser();
-  const deleteUser = useDeleteUser();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const [deleteJobOpen, setDeleteJobOpen] = useState(false);
-  const [banUserOpen, setBanUserOpen] = useState(false);
-  const [deleteUserOpen, setDeleteUserOpen] = useState(false);
-
-  const handleDeleteJob = async () => {
+  const handleDelete = async () => {
     await deleteJob.mutateAsync(id!);
-    navigate("/admin/jobs");
-  };
-
-  const handleBanToggle = async () => {
-    if (!publisher) return;
-    if (publisher.isActive === false) {
-      await unbanUser.mutateAsync(publisher.id);
-    } else {
-      await banUser.mutateAsync(publisher.id);
-    }
-    setBanUserOpen(false);
-  };
-
-  const handleDeleteUser = async () => {
-    await deleteUser.mutateAsync(publisher!.id);
-    setDeleteUserOpen(false);
+    setDeleteOpen(false);
     navigate("/admin/jobs");
   };
 
@@ -120,6 +194,9 @@ export default function AdminJobDetail() {
     );
   }
 
+  // Only allow deletion for jobs that haven't started yet (financial records must be preserved)
+  const canDelete = job.status === "open";
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -129,7 +206,7 @@ export default function AdminJobDetail() {
           العودة إلى الوظائف
         </Button>
 
-        {/* Two-column layout */}
+        {/* Job Details + Users side by side */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Job Details — 2/3 */}
           <div className="lg:col-span-2 space-y-6">
@@ -180,159 +257,116 @@ export default function AdminJobDetail() {
                     <p className="text-sm text-muted-foreground">{job.address}</p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
 
-            {/* Danger Zone */}
-            <Card className="border-destructive/30">
-              <CardHeader>
-                <CardTitle className="text-destructive text-lg">منطقة الخطر</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  حذف هذه الوظيفة لا يمكن التراجع عنه. سيتم إزالة الوظيفة بشكل نهائي من المنصة.
-                </p>
-                <Button variant="destructive" onClick={() => setDeleteJobOpen(true)} className="gap-2">
-                  <Trash2 className="w-4 h-4" />
-                  حذف الوظيفة
-                </Button>
+                {job.status === "in-progress" && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="text-sm font-medium mb-2">المبلغ المحجوز (Escrow)</p>
+                      <div className="bg-primary-soft border border-primary/20 rounded-lg p-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">قيمة الوظيفة</span>
+                          <span className="font-bold text-primary">{job.price} جنيه</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-1 text-xs text-muted-foreground">
+                          <span>عمولة المنصة (٥٪)</span>
+                          <span>{Math.round(job.price * 0.05)} جنيه</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-primary/20">
+                          <span className="text-sm font-medium">صافي العامل</span>
+                          <span className="font-bold">{Math.round(job.price * 0.95)} جنيه</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Publisher Info — 1/3 */}
-      <div className="space-y-6 px-4 sm:px-0">
+          {/* Sidebar — Users Info + Danger Zone */}
+          <div className="space-y-6">
+            <UserInfoCard
+              user={publisher}
+              title="صاحب العمل"
+              icon={<UserIcon className="w-5 h-5 text-primary" />}
+              onViewProfile={publisher ? () => navigate(`/admin/users/${publisher.id}`) : undefined}
+            />
+
+            {(worker || job.status === "in-progress") && (
+              <UserInfoCard
+                user={worker}
+                title="العامل المنفذ"
+                icon={<Star className="w-5 h-5 text-warning" />}
+                onViewProfile={worker ? () => navigate(`/admin/users/${worker.id}`) : undefined}
+              />
+            )}
+
+            {/* Financial summary */}
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <UserX className="w-5 h-5 text-primary" />
-                  <CardTitle className="text-lg">الناشر</CardTitle>
+                  <Wallet className="w-5 h-5 text-primary" />
+                  <CardTitle className="text-lg">الماليات</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-12 h-12">
-                    <AvatarImage src={publisher?.avatar} />
-                    <AvatarFallback>{publisher?.name?.[0] ?? "?"}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">{publisher?.name ?? "غير معروف"}</p>
-                    <Badge variant="outline" className="mt-1">
-                      {roleLabel[publisher?.role ?? ""] ?? publisher?.role}
-                    </Badge>
-                  </div>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">قيمة الوظيفة</span>
+                  <span className="font-bold">{job.price} جنيه</span>
                 </div>
-
-                <Separator />
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">الهاتف</span>
-                    <span dir="ltr" className="font-medium">{publisher?.phone ?? "—"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">البريد</span>
-                    <span className="font-medium text-left">{publisher?.email ?? "—"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">المدينة</span>
-                    <span className="font-medium">{publisher?.city ?? "—"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">الرصيد</span>
-                    <span className="font-medium">{publisher?.walletBalance ?? 0} جنيه</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">تاريخ التسجيل</span>
-                    <span className="font-medium">
-                      {publisher?.createdAt
-                        ? new Date(publisher.createdAt).toLocaleDateString("ar-EG")
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">الحالة</span>
-                    {publisher?.isActive === false ? (
-                      <Badge variant="destructive">محظور</Badge>
-                    ) : publisher?.isVerified ? (
-                      <Badge variant="default" className="gap-1"><ShieldCheck className="w-3 h-3" /> موثق</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="gap-1"><ShieldAlert className="w-3 h-3" /> غير موثق</Badge>
-                    )}
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">عدد الساعات</span>
+                  <span>{job.hours} ساعة</span>
                 </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Button
-                    variant={publisher?.isActive === false ? "outline" : "destructive"}
-                    size="sm"
-                    className="w-full gap-2"
-                    onClick={() => setBanUserOpen(true)}
-                    disabled={!publisher}
-                  >
-                    <Ban className="w-4 h-4" />
-                    {publisher?.isActive === false ? "إلغاء الحظر" : "حظر المستخدم"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="w-full gap-2"
-                    onClick={() => setDeleteUserOpen(true)}
-                    disabled={!publisher}
-                  >
-                    <UserX className="w-4 h-4" />
-                    حذف المستخدم
-                  </Button>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">مدة العمل</span>
+                  <span>{new Date(job.startDate).toLocaleDateString("ar-EG")}</span>
                 </div>
+                {job.status === "open" && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">المتقدمين</span>
+                    <span>{job.applicantsCount}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            {/* Danger Zone — only for deletable jobs (preserves financial records) */}
+            {canDelete && (
+              <Card className="border-destructive/30">
+                <CardHeader>
+                  <CardTitle className="text-destructive text-lg">إجراءات</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    حذف هذه الوظيفة لا يمكن التراجع عنه. استخدمه في حالات المخالفات أو الوظائف غير المرغوب فيها.
+                  </p>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setDeleteOpen(true)}
+                    className="w-full gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    حذف الوظيفة
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Confirm: Delete Job */}
       <ConfirmDialog
-        open={deleteJobOpen}
-        onOpenChange={(o) => { if (!o) setDeleteJobOpen(false); }}
+        open={deleteOpen}
+        onOpenChange={(o) => { if (!o) setDeleteOpen(false); }}
         title="حذف الوظيفة"
         description={`هل أنت متأكد من حذف "${job.title}"؟ هذا الإجراء لا يمكن التراجع عنه.`}
         confirmText="حذف"
         cancelText="إلغاء"
         variant="destructive"
         loading={deleteJob.isPending}
-        onConfirm={handleDeleteJob}
-      />
-
-      {/* Confirm: Ban/Unban Publisher */}
-      <ConfirmDialog
-        open={banUserOpen}
-        onOpenChange={(o) => { if (!o) setBanUserOpen(false); }}
-        title={publisher?.isActive === false ? "إلغاء حظر المستخدم" : "حظر المستخدم"}
-        description={
-          publisher?.isActive === false
-            ? `هل أنت متأكد من إلغاء حظر "${publisher?.name}"؟`
-            : `هل أنت متأكد من حظر "${publisher?.name}"؟ لن يتمكن من تسجيل الدخول أو استخدام المنصة.`
-        }
-        confirmText={publisher?.isActive === false ? "إلغاء الحظر" : "حظر"}
-        cancelText="إلغاء"
-        variant={publisher?.isActive === false ? "default" : "destructive"}
-        loading={banUser.isPending || unbanUser.isPending}
-        onConfirm={handleBanToggle}
-      />
-
-      {/* Confirm: Delete Publisher */}
-      <ConfirmDialog
-        open={deleteUserOpen}
-        onOpenChange={(o) => { if (!o) setDeleteUserOpen(false); }}
-        title="حذف المستخدم"
-        description={`هل أنت متأكد من حذف "${publisher?.name}"؟ هذا الإجراء لا يمكن التراجع عنه وسيؤدي إلى حذف جميع بيانات المستخدم.`}
-        confirmText="حذف"
-        cancelText="إلغاء"
-        variant="destructive"
-        loading={deleteUser.isPending}
-        onConfirm={handleDeleteUser}
+        onConfirm={handleDelete}
       />
     </AdminLayout>
   );

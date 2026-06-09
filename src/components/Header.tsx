@@ -42,7 +42,10 @@ export default function Header() {
       ? [{ label: "وظائفي", href: "/my-jobs", icon: <Briefcase className="w-4 h-4" /> }]
       : []),
     ...(user?.role === "worker"
-      ? [{ label: "المحفظة", href: "/wallet", icon: <Wallet className="w-4 h-4" /> }]
+      ? [
+          { label: "وظائفي", href: "/my-jobs-active", icon: <Briefcase className="w-4 h-4" /> },
+          { label: "المحفظة", href: "/wallet", icon: <Wallet className="w-4 h-4" /> },
+        ]
       : []),
     { label: "المحادثات", href: "/chat", icon: <MessageSquare className="w-4 h-4" /> },
   ];
@@ -217,6 +220,26 @@ export default function Header() {
                     <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
                     الوظائف
                   </Link>
+                  {user?.role === "worker" && (
+                    <Link
+                      to="/my-jobs-active"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md hover:bg-accent transition-colors"
+                    >
+                      <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
+                      وظائفي النشطة
+                    </Link>
+                  )}
+                  {user?.role === "employer" && (
+                    <Link
+                      to="/my-jobs"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md hover:bg-accent transition-colors"
+                    >
+                      <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
+                      وظائفي
+                    </Link>
+                  )}
                   <Link
                     to="/chat"
                     onClick={() => setMobileOpen(false)}
