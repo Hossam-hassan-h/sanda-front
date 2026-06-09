@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { MapPin, ShieldCheck, Calendar, Star, Briefcase, Pencil } from "lucide-react";
+import { MapPin, ShieldCheck, Calendar, Star, Briefcase, Pencil, AlertTriangle } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import StarRating from "@/components/StarRating";
 import { authApi } from "@/api/auth";
 import { useRatings } from "@/hooks/useJobs";
@@ -16,9 +17,10 @@ import type { User } from "@/api/types";
 
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
-  const { user: authUser } = useAuth();
+  const { user: authUser, updateUser } = useAuth();
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const { data: ratings } = useRatings(profileUser?.id ?? "");
   const [editModalOpen, setEditModalOpen] = useState(false);
 
@@ -34,6 +36,9 @@ export default function Profile() {
       authApi.getUser(id).then((u) => {
         setProfileUser(u);
         setLoading(false);
+      }).catch(() => {
+        setProfileError("لم يتم العثور على المستخدم");
+        setLoading(false);
       });
     }
   }, [id, authUser]);
@@ -43,7 +48,7 @@ export default function Profile() {
   const handleProfileUpdate = (updated: Partial<User>) => {
     if (!profileUser) return;
     const merged = { ...profileUser, ...updated };
-    localStorage.setItem("sanda_user", JSON.stringify(merged));
+    updateUser(merged);
     setProfileUser(merged);
     toast({
       title: "تم الحفظ",
@@ -55,9 +60,19 @@ export default function Profile() {
     return (
       <UserLayout>
         <div className="container mx-auto px-4 md:px-6 py-10 max-w-4xl">
-          <Skeleton className="h-48 w-full mb-6" />
-          <Skeleton className="h-32 w-full mb-6" />
-          <Skeleton className="h-40 w-full" />
+          {profileError ? (
+            <Alert variant="destructive" className="my-8">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>خطأ</AlertTitle>
+              <AlertDescription>{profileError}</AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <Skeleton className="h-48 w-full mb-6" />
+              <Skeleton className="h-32 w-full mb-6" />
+              <Skeleton className="h-40 w-full" />
+            </>
+          )}
         </div>
       </UserLayout>
     );
@@ -120,8 +135,6 @@ export default function Profile() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <StatBox label="وظائف منفّذة" value="32" />
-          <StatBox label="معدل الالتزام" value="98%" />
           <StatBox label="التقييم" value={profileUser.rating?.toFixed(1) ?? "—"} />
         </div>
 

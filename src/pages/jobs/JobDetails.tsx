@@ -24,10 +24,14 @@ export default function JobDetails() {
 
   const handleApply = async () => {
     if (!job) return;
-    await apply.mutateAsync({ jobId: job.id, message });
-    toast({ title: "تم إرسال طلبك", description: "صاحب العمل هيتواصل معاك قريباً." });
-    setOpen(false);
-    setMessage("");
+    try {
+      await apply.mutateAsync({ jobId: job.id, message });
+      toast({ title: "تم إرسال طلبك", description: "صاحب العمل هيتواصل معاك قريباً." });
+      setOpen(false);
+      setMessage("");
+    } catch {
+      toast({ title: "فشل إرسال الطلب", variant: "destructive" });
+    }
   };
 
   const isWorker = user?.role === "worker";

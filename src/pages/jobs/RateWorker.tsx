@@ -34,9 +34,21 @@ export default function RateWorker() {
     );
   }
 
-  // Fallback worker name if not resolved in mock/api
-  const workerId = job.workerId || "u1";
-  const workerName = job.worker?.name || "أحمد المصري";
+  if (!job.workerId) {
+    return (
+      <UserLayout>
+        <div className="container mx-auto py-8 text-center">
+          <p className="text-muted-foreground">لم يتم تعيين عامل لهذه الوظيفة بعد</p>
+          <Button className="mt-4" onClick={() => navigate(-1)}>
+            العودة
+          </Button>
+        </div>
+      </UserLayout>
+    );
+  }
+
+  const workerId = job.workerId;
+  const workerName = job.worker?.name ?? "العامل";
 
   return (
     <UserLayout>

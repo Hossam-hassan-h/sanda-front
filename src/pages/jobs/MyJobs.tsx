@@ -7,6 +7,8 @@ import JobCard from "@/components/jobs/JobCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import type { JobStatus } from "@/api/types";
 
 const tabs: { key: JobStatus | "all"; label: string }[] = [
@@ -17,7 +19,7 @@ const tabs: { key: JobStatus | "all"; label: string }[] = [
 ];
 
 export default function MyJobs() {
-  const { data: jobs, isLoading } = useMyJobs();
+  const { data: jobs, isLoading, isError } = useMyJobs();
 
   const filteredByTab = useMemo(() => {
     if (!jobs) return {} as Record<string, typeof jobs>;
@@ -46,7 +48,13 @@ export default function MyJobs() {
             {tabs.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
           </TabsList>
 
-          {tabs.map((t) => (
+          {isError ? (
+            <Alert variant="destructive" className="mt-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>خطأ في تحميل الوظائف</AlertTitle>
+              <AlertDescription>حدث خطأ أثناء جلب البيانات. يرجى المحاولة مرة أخرى.</AlertDescription>
+            </Alert>
+          ) : tabs.map((t) => (
             <TabsContent key={t.key} value={t.key} className="mt-6">
               {isLoading ? (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -33,15 +33,19 @@ export default function PostJob() {
       toast({ title: "العنوان التفصيلي مطلوب", variant: "destructive" });
       return;
     }
-    const job = await create.mutateAsync({
-      ...values,
-      address: location.address,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      method: location.method,
-    });
-    toast({ title: "تم نشر الوظيفة بنجاح", description: "هتبدأ تستقبل تقديمات قريباً." });
-    navigate(`/jobs/${job.id}`);
+    try {
+      const job = await create.mutateAsync({
+        ...values,
+        address: location.address,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        method: location.method,
+      });
+      toast({ title: "تم نشر الوظيفة بنجاح", description: "هتبدأ تستقبل تقديمات قريباً." });
+      navigate(`/jobs/${job.id}`);
+    } catch {
+      toast({ title: "فشل نشر الوظيفة", variant: "destructive" });
+    }
   };
 
   return (

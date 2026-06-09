@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Bell, Check, Trash2, Briefcase, User, Flag, Info, Filter } from "lucide-react";
+import { Bell, Check, Trash2, Briefcase, User, Flag, Info, Filter, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import AdminLayout from "@/layouts/AdminLayout";
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, useDeleteNotification } from "@/hooks/useNotifications";
@@ -7,6 +7,7 @@ import type { Notification } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
@@ -58,7 +59,7 @@ export default function NotificationsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const { data: notifications, isLoading } = useNotifications(user?.role);
+  const { data: notifications, isLoading, isError } = useNotifications(user?.role);
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const deleteNotif = useDeleteNotification();
@@ -156,6 +157,12 @@ export default function NotificationsPage() {
               </div>
             ))}
           </div>
+        ) : isError ? (
+          <Alert variant="destructive" className="my-8">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>خطأ في تحميل الإشعارات</AlertTitle>
+            <AlertDescription>حدث خطأ أثناء جلب البيانات. يرجى المحاولة مرة أخرى.</AlertDescription>
+          </Alert>
         ) : grouped.length > 0 ? (
           <div className="space-y-8">
             {grouped.map((section) => (

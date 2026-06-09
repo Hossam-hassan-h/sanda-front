@@ -40,7 +40,7 @@ export const jobAssignmentsApi = {
   /** Get all assignments for a specific job (for employer) */
   async listByJob(jobId: string): Promise<JobAssignment[]> {
     if (USE_MOCKS) {
-      return delay(mockAssignments.filter((a) => a.jobId === jobId));
+      return mockDelay(mockAssignments.filter((a) => a.jobId === jobId));
     }
     const { data } = await api.get<JobAssignment[]>(`/jobs/${jobId}/assignments`);
     return data;
@@ -49,7 +49,7 @@ export const jobAssignmentsApi = {
   /** Get all assignments for the current worker */
   async myAssignments(): Promise<JobAssignment[]> {
     if (USE_MOCKS) {
-      return delay(mockAssignments.filter((a) => a.workerId === "u1"));
+      return mockDelay(mockAssignments.filter((a) => a.workerId === "u1"));
     }
     const { data } = await api.get<JobAssignment[]>("/assignments/mine");
     return data;
@@ -60,7 +60,7 @@ export const jobAssignmentsApi = {
     if (USE_MOCKS) {
       const assignment = mockAssignments.find((a) => a.id === id);
       if (!assignment) throw new Error("Assignment not found");
-      return delay(assignment);
+      return mockDelay(assignment);
     }
     const { data } = await api.get<JobAssignment>(`/assignments/${id}`);
     return data;
@@ -70,7 +70,7 @@ export const jobAssignmentsApi = {
   async generateQR(jobId: string): Promise<{ qrCode: string; qrData: string }> {
     if (USE_MOCKS) {
       const qrData = JSON.stringify({ jobId, timestamp: Date.now(), secret: "sanda-secret" });
-      return delay({ qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`, qrData });
+      return mockDelay({ qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`, qrData });
     }
     const { data } = await api.post<{ qrCode: string; qrData: string }>(`/jobs/${jobId}/qr`);
     return data;
@@ -90,7 +90,7 @@ export const jobAssignmentsApi = {
         createdAt: new Date().toISOString(),
       };
       mockAssignments.push(assignment);
-      return delay(assignment, 800);
+      return mockDelay(assignment, 800);
     }
     const { data } = await api.post<JobAssignment>("/assignments/check-in", { jobId, qrCode });
     return data;
@@ -104,7 +104,7 @@ export const jobAssignmentsApi = {
         assignment.checkOutTime = new Date().toISOString();
         assignment.status = "checked-out";
       }
-      return delay(assignment!);
+      return mockDelay(assignment!);
     }
     const { data } = await api.post<JobAssignment>(`/assignments/${assignmentId}/check-out`);
     return data;
@@ -117,7 +117,7 @@ export const jobAssignmentsApi = {
       if (assignment) {
         assignment.status = "no-show";
       }
-      return delay({ ok: true });
+      return mockDelay({ ok: true });
     }
     const { data } = await api.post<ApiSuccessResponse>(`/assignments/${assignmentId}/no-show`);
     return data;

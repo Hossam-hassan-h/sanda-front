@@ -10,6 +10,7 @@ interface AuthContextValue {
   register: (payload: RegisterPayload) => Promise<User>;
   logout: () => void;
   switchRole: (role: UserRole) => void;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -85,9 +86,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...updates };
+      localStorage.setItem("sanda_user", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isLoading, isAuthenticated: !!user, login, register, logout, switchRole }),
-    [user, isLoading, login, register, logout, switchRole]
+    () => ({ user, isLoading, isAuthenticated: !!user, login, register, logout, switchRole, updateUser }),
+    [user, isLoading, login, register, logout, switchRole, updateUser]
   );
 
   return (

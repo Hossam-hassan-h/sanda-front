@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PageLoader from "@/components/PageLoader";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // ─── Lazy-loaded pages ───────────────────────────────────────────────
 // Each import becomes its own chunk → user only downloads what they visit.
@@ -98,7 +99,8 @@ const App = () => (
     <BrowserRouter>
       <ScrollToTop />
       <Suspense fallback={<PageLoader />}>
-        <Routes>
+        <ErrorBoundary>
+          <Routes>
           {/* ── Public ─────────────────────────────────────────── */}
           <Route path="/" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
           <Route path="/login" element={<Login />} />
@@ -142,7 +144,8 @@ const App = () => (
 
           {/* ── 404 ───────────────────────────────────────────── */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
+          </Routes>
+        </ErrorBoundary>
       </Suspense>
     </BrowserRouter>
   </AppProviders>

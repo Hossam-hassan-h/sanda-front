@@ -57,9 +57,13 @@ export default function Chat() {
 
   const handleSend = async () => {
     if ((!text.trim() && files.length === 0) || !activeId) return;
-    await send.mutateAsync({ conversationId: activeId, message: text, attachments: files.length ? files : undefined });
-    setText("");
-    setFiles([]);
+    try {
+      await send.mutateAsync({ conversationId: activeId, message: text, attachments: files.length ? files : undefined });
+      setText("");
+      setFiles([]);
+    } catch {
+      alert("فشل إرسال الرسالة");
+    }
   };
 
   const active = convos?.find((c) => c.id === activeId);
@@ -122,7 +126,7 @@ export default function Chat() {
                   </div>
                 ) : (
                   messages?.map((m) => {
-                    const mine = m.senderId === user?.id || m.senderId === "u1";
+                    const mine = m.senderId === user?.id;
                     return (
                       <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${

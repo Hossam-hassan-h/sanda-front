@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useWalletBalance, useWalletTransactions } from "@/hooks/useWallet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import type { TransactionType } from "@/api/types";
 
 const typeMeta: Record<TransactionType, { label: string; cls: string; sign: string; icon: LucideIcon }> = {
@@ -15,8 +17,8 @@ const typeMeta: Record<TransactionType, { label: string; cls: string; sign: stri
 };
 
 export default function Wallet() {
-  const { data: balance, isLoading: bLoading } = useWalletBalance();
-  const { data: txs, isLoading: tLoading } = useWalletTransactions();
+  const { data: balance, isLoading: bLoading, isError: bError } = useWalletBalance();
+  const { data: txs, isLoading: tLoading, isError: tError } = useWalletTransactions();
 
   return (
     <UserLayout>
@@ -24,6 +26,13 @@ export default function Wallet() {
         <h1 className="font-heading font-extrabold text-3xl mb-2">المحفظة</h1>
         <p className="text-muted-foreground mb-8">تابع رصيدك وعملياتك المالية</p>
 
+        {(bError || tError) ? (
+          <Alert variant="destructive" className="mb-8">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>خطأ في تحميل البيانات</AlertTitle>
+            <AlertDescription>حدث خطأ أثناء جلب بيانات المحفظة. يرجى المحاولة مرة أخرى.</AlertDescription>
+          </Alert>
+        ) : (
         <div className="grid md:grid-cols-2 gap-4 mb-8">
           <div className="bg-gradient-to-br from-primary to-primary-deep text-primary-foreground rounded-2xl p-6">
             <div className="flex items-center gap-2 text-sm text-primary-foreground/80 mb-2">
@@ -47,6 +56,7 @@ export default function Wallet() {
             <p className="text-sm text-muted-foreground">يتم تحريره تلقائياً بعد إتمام العمل</p>
           </div>
         </div>
+        )}
 
         <div className="bg-card border border-border rounded-2xl">
           <div className="p-5 border-b border-border">

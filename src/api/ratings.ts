@@ -9,7 +9,7 @@ export const ratingsApi = {
     if (USE_MOCKS) {
       // In mock data, filter ratings (normally we would have a reviewedUserId,
       // but mockRatings has reviews for Ahmed u1 by default)
-      return delay(mockRatings);
+      return mockDelay(mockRatings);
     }
     const { data } = await api.get<Rating[]>(`/users/${userId}/ratings`);
     return data;
@@ -34,7 +34,7 @@ export const ratingsApi = {
         createdAt: new Date().toISOString().split("T")[0],
       };
       mockRatings.unshift(newRating);
-      return delay(newRating, 500);
+      return mockDelay(newRating, 500);
     }
     const { data } = await api.post<Rating>("/ratings", payload);
     return data;

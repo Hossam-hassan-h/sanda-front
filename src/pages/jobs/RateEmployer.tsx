@@ -34,8 +34,21 @@ export default function RateEmployer() {
     );
   }
 
-  const employerId = job.employerId || "u2";
-  const employerName = job.employer?.name || "سارة عبدالله";
+  if (!job.employerId) {
+    return (
+      <UserLayout>
+        <div className="container mx-auto py-8 text-center">
+          <p className="text-muted-foreground">لم يتم تعيين صاحب عمل لهذه الوظيفة بعد</p>
+          <Button className="mt-4" onClick={() => navigate(-1)}>
+            العودة
+          </Button>
+        </div>
+      </UserLayout>
+    );
+  }
+
+  const employerId = job.employerId;
+  const employerName = job.employer?.name ?? "صاحب العمل";
 
   return (
     <UserLayout>

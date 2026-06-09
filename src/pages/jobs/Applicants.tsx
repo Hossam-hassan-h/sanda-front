@@ -22,14 +22,22 @@ export default function Applicants() {
 
   const confirmPayment = async () => {
     if (!paymentFor) return;
-    await accept.mutateAsync(paymentFor);
-    toast({ title: "تم القبول والدفع", description: "المبلغ محجوز حتى اكتمال العمل." });
-    setPaymentFor(null);
+    try {
+      await accept.mutateAsync(paymentFor);
+      toast({ title: "تم القبول والدفع", description: "المبلغ محجوز حتى اكتمال العمل." });
+      setPaymentFor(null);
+    } catch {
+      toast({ title: "فشل القبول", variant: "destructive" });
+    }
   };
 
   const handleReject = async (appId: string) => {
-    await reject.mutateAsync(appId);
-    toast({ title: "تم رفض المتقدم" });
+    try {
+      await reject.mutateAsync(appId);
+      toast({ title: "تم رفض المتقدم" });
+    } catch {
+      toast({ title: "فشل الرفض", variant: "destructive" });
+    }
   };
 
   return (

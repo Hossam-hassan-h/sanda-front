@@ -30,7 +30,7 @@ export const reportsApi = {
         createdAt: new Date().toISOString(),
       };
       mockReports.unshift(report);
-      return delay(report);
+      return mockDelay(report);
     }
     const { data } = await api.post<Report>("/reports", payload);
     return data;
@@ -39,7 +39,7 @@ export const reportsApi = {
   /** List reports filed by the current user. */
   async mine(): Promise<Report[]> {
     if (USE_MOCKS) {
-      return delay(mockReports.filter((r) => r.reportedById === "u1"));
+      return mockDelay(mockReports.filter((r) => r.reportedById === "u1"));
     }
     const { data } = await api.get<Report[]>("/reports/mine");
     return data;
@@ -50,7 +50,7 @@ export const reportsApi = {
     if (USE_MOCKS) {
       const r = mockReports.find((x) => x.id === id);
       if (r) r.status = status;
-      return delay({ ok: true });
+      return mockDelay({ ok: true });
     }
     const { data } = await api.patch<ApiSuccessResponse>(`/reports/${id}/status`, { status });
     return data;

@@ -4,6 +4,7 @@ import { QrCode, Camera, CheckCircle2, Clock, type LucideIcon } from "lucide-rea
 import UserLayout from "@/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useJob } from "@/hooks/useJobs";
 import { useAuth } from "@/context/AuthContext";
 import QRScanner from "@/components/QRScanner";
@@ -19,7 +20,10 @@ export default function ActiveJob() {
   if (!job) {
     return (
       <UserLayout>
-        <div className="container py-20 text-center">جاري التحميل...</div>
+        <div className="container py-20 px-4 space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </div>
       </UserLayout>
     );
   }

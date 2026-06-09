@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 
 const cities = ["all", "القاهرة", "الجيزة", "الإسكندرية", "المنصورة"];
@@ -31,7 +33,7 @@ export default function JobsFeed() {
 
   const debouncedQ = useDebounce(q, 350);
   const filters = useMemo(() => ({ q: debouncedQ || undefined, city, category }), [debouncedQ, city, category]);
-  const { data: jobs, isLoading } = useJobs(filters);
+  const { data: jobs, isLoading, isError } = useJobs(filters);
 
   const totalJobs = jobs?.length ?? 0;
   const { page, totalPages, goToPage, resetPage, pageRange } = usePagination({ totalItems: totalJobs, pageSize: PAGE_SIZE });
@@ -104,7 +106,13 @@ export default function JobsFeed() {
           )}
         </div>
 
-        {isLoading ? (
+        {isError ? (
+          <Alert variant="destructive" className="my-8">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>خطأ في تحميل الوظائف</AlertTitle>
+            <AlertDescription>حدث خطأ أثناء جلب البيانات. يرجى المحاولة مرة أخرى.</AlertDescription>
+          </Alert>
+        ) : isLoading ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
           </div>
