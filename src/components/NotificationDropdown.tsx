@@ -1,4 +1,5 @@
 import { memo, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, Check, Trash2, Briefcase, User, Flag, Info } from "lucide-react";
 import type { Notification } from "@/api/types";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ export default memo(function NotificationDropdown({
   onDelete,
   onClose,
 }: NotificationDropdownProps) {
+  const navigate = useNavigate();
   const visible = notifications?.slice(0, MAX_VISIBLE) ?? [];
   const isAdmin = userRole === "admin";
 
@@ -70,15 +72,11 @@ export default memo(function NotificationDropdown({
       onMarkRead(notif.id);
     }
     if (notif.metadata?.jobId) {
-      window.location.href = isAdmin
-        ? `/admin/jobs/${notif.metadata.jobId}`
-        : `/jobs/${notif.metadata.jobId}`;
+      navigate(isAdmin ? `/admin/jobs/${notif.metadata.jobId}` : `/jobs/${notif.metadata.jobId}`);
     } else if (notif.metadata?.reportId) {
-      window.location.href = isAdmin
-        ? `/admin/reports/${notif.metadata.reportId}`
-        : `/admin/reports/${notif.metadata.reportId}`;
+      navigate(`/admin/reports/${notif.metadata.reportId}`);
     } else if (notif.metadata?.conversationId) {
-      window.location.href = `/chat`;
+      navigate(`/chat`);
     }
     onClose();
   };
