@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Camera, Loader2, ChevronDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ interface EditProfileModalProps {
   onOpenChange: (open: boolean) => void;
   user: User;
   userId?: string;
-  onSave: (updated: Partial<User>) => void;
+  onSave: (updated: Partial<User>) => void | Promise<void>;
 }
 
 export default function EditProfileModal({ open, onOpenChange, user, userId, onSave }: EditProfileModalProps) {
@@ -91,7 +91,7 @@ export default function EditProfileModal({ open, onOpenChange, user, userId, onS
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (avatarPreview && !avatarPreview.startsWith("blob:")) {
+      if (avatarPreview && avatarPreview.startsWith("blob:")) {
         URL.revokeObjectURL(avatarPreview);
       }
       setAvatarFile(file);
@@ -121,8 +121,13 @@ export default function EditProfileModal({ open, onOpenChange, user, userId, onS
       }
     }
 
-    onSave(updated);
-    setIsSaving(false);
+    try {
+      await onSave(updated);
+      setShowUnsavedDialog(false);
+      onOpenChange(false);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -150,8 +155,6 @@ export default function EditProfileModal({ open, onOpenChange, user, userId, onS
 
   const handleSaveAndClose = async () => {
     await handleSave();
-    setShowUnsavedDialog(false);
-    onOpenChange(false);
   };
 
   const formFields = (

@@ -62,6 +62,7 @@ export default function Profile() {
         description: "حدث خطأ أثناء تحديث البيانات",
         variant: "destructive",
       });
+      throw new Error("Profile update failed");
     }
   };
 

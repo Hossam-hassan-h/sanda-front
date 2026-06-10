@@ -6,6 +6,8 @@ import { toast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
+import { authApi } from "@/api/auth";
+import { USE_MOCKS } from "@/api/client";
 import type { VerificationDocument } from "@/api/types";
 
 interface VerificationUploadProps {
@@ -71,6 +73,7 @@ function readFileAsDataURL(file: File): Promise<string> {
 }
 
 const STORAGE_KEY = "sanda_verification_requests";
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 /** Save the verification request both to the user (in localStorage) and to a global map for admins */
 function persistVerificationRequest(
@@ -130,9 +133,27 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
     }
     if (!user) return;
 
+    const selectedFiles = [nationalIdFront, nationalIdBack, personalPhoto].filter(Boolean) as File[];
+    const oversizedFile = selectedFiles.find((file) => file.size > MAX_FILE_SIZE);
+    if (oversizedFile) {
+      toast({
+        title: "Ø§Ù„Ù…Ù„Ù ÙƒØ¨ÙŠØ± Ø¬Ø¯Ù‹Ø§",
+        description: "Ø§Ù„Ø­Ø¯ Ø§Ù„Ø£Ù‚ØµÙ‰ Ù„ÙƒÙ„ ØµÙˆØ±Ø© Ù‡Ùˆ 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUploading(true);
 
     try {
+      if (!USE_MOCKS) {
+        await authApi.uploadVerificationDocuments(user.id, {
+          nationalIdFront,
+          nationalIdBack,
+        });
+      }
+
       const now = new Date().toISOString();
       const documents: VerificationDocument[] = [
         {

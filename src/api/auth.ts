@@ -91,9 +91,25 @@ export const authApi = {
     const form = new FormData();
     form.append("profileImage", file);
     const { data } = await api.patch(`/users/documents/${userId}`, form);
-    const u = data as Record<string, unknown>;
+    const u = ((data as Record<string, unknown>).data ?? data) as Record<string, unknown>;
     const pi = u.profileImage as { url?: string } | undefined;
     return pi?.url ?? "";
+  },
+
+  async uploadVerificationDocuments(
+    userId: string,
+    files: { nationalIdFront: File; nationalIdBack: File }
+  ): Promise<User> {
+    if (USE_MOCKS) {
+      const cached = localStorage.getItem("sanda_user");
+      return mockDelay(cached ? JSON.parse(cached) : mockUsers[0]);
+    }
+    const form = new FormData();
+    form.append("nationalIdFront", files.nationalIdFront);
+    form.append("nationalIdBack", files.nationalIdBack);
+    const { data } = await api.patch(`/users/documents/${userId}`, form);
+    const raw = ((data as Record<string, unknown>).data ?? data) as Record<string, unknown>;
+    return mapUser(raw);
   },
 
   async getUser(id: string): Promise<User> {
