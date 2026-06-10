@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import SkillsInput from "@/components/SkillsInput";
 import UnsavedChangesDialog from "@/components/UnsavedChangesDialog";
+import { authApi } from "@/api/auth";
+import { toast } from "@/hooks/use-toast";
 import type { User } from "@/api/types";
 
 const GOVERNORATE_CITIES: Record<string, string[]> = {
@@ -42,10 +44,11 @@ interface EditProfileModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user: User;
+  userId?: string;
   onSave: (updated: Partial<User>) => void;
 }
 
-export default function EditProfileModal({ open, onOpenChange, user, onSave }: EditProfileModalProps) {
+export default function EditProfileModal({ open, onOpenChange, user, userId, onSave }: EditProfileModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -100,7 +103,6 @@ export default function EditProfileModal({ open, onOpenChange, user, onSave }: E
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
 
     const updated: Partial<User> = {
       bio,
@@ -108,8 +110,17 @@ export default function EditProfileModal({ open, onOpenChange, user, onSave }: E
       city: district ? `${governorate}، ${district}` : governorate || undefined,
     };
 
-    if (avatarPreview && avatarPreview !== user.avatar) {
-      updated.avatar = avatarPreview;
+    if (avatarFile && userId) {
+      try {
+        const url = await authApi.uploadProfileImage(userId, avatarFile);
+        if (url) updated.avatar = url;
+      } catch {
+        toast({
+          title: "فشل رفع الصورة",
+          description: "تم حفظ البيانات لكن الصورة لم تُرفع",
+          variant: "destructive",
+        });
+      }
     }
 
     onSave(updated);

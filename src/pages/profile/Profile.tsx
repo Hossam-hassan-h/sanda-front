@@ -47,13 +47,9 @@ export default function Profile() {
 
   const handleProfileUpdate = async (updated: Partial<User>) => {
     if (!profileUser) return;
-    const payload = { ...updated };
-    if (payload.avatar?.startsWith("blob:")) {
-      delete payload.avatar;
-    }
     try {
-      const user = await authApi.updateProfile(profileUser.id, payload);
-      const merged = { ...user, avatar: updated.avatar || user.avatar };
+      const user = await authApi.updateProfile(profileUser.id, updated);
+      const merged = { ...profileUser, ...user };
       updateUser(merged);
       setProfileUser(merged);
       toast({
@@ -179,6 +175,7 @@ export default function Profile() {
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
         user={profileUser}
+        userId={profileUser.id}
         onSave={handleProfileUpdate}
       />
     </UserLayout>

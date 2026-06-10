@@ -81,6 +81,16 @@ export const authApi = {
     return mapUser(res as Record<string, unknown>);
   },
 
+  async uploadProfileImage(userId: string, file: File): Promise<string> {
+    if (USE_MOCKS) return mockDelay(URL.createObjectURL(file));
+    const form = new FormData();
+    form.append("profileImage", file);
+    const { data } = await api.patch(`/users/documents/${userId}`, form);
+    const u = data as Record<string, unknown>;
+    const pi = (u.profileImage ?? u.data?.profileImage) as Record<string, unknown> | undefined;
+    return (pi?.url as string) || "";
+  },
+
   async getUser(id: string): Promise<User> {
     if (!USE_MOCKS) {
       try {
