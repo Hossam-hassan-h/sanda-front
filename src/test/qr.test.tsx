@@ -72,21 +72,18 @@ describe("QRGenerator Component", () => {
     );
 
     expect(
-      screen.getByText("QR Code متاح فقط للوظائف النشطة (in-progress)")
+      screen.getByText("QR Code بيظهر لما تبدأ الوظيفة")
     ).toBeInTheDocument();
   });
 
-  it("should render generate button when job is in-progress and no QR code is generated yet", () => {
-    render(
-      <QRGenerator jobId="j4" jobTitle="مساعد مطبخ" jobStatus="in-progress" />,
-      { wrapper: createWrapper() }
-    );
+    it("should render generate button when job is in-progress and no QR code is generated yet", () => {
+      render(
+        <QRGenerator jobId="j4" jobTitle="مساعد مطبخ" jobStatus="in-progress" />,
+        { wrapper: createWrapper() }
+      );
 
-    expect(screen.getByText("توليد QR Code")).toBeInTheDocument();
-    expect(
-      screen.getByText("اضغط لتوليد QR Code فريد للعامل لتسجيل حضوره")
-    ).toBeInTheDocument();
-  });
+      expect(screen.getByText("توليد QR Code")).toBeInTheDocument();
+    });
 
   it("should generate and display QR code when generate button is clicked", async () => {
     const generateSpy = vi

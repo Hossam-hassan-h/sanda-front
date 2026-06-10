@@ -138,22 +138,16 @@ const mockNotifications: Notification[] = [
 
 export const notificationsApi = {
   async list(role?: string): Promise<Notification[]> {
-    if (USE_MOCKS) {
-      let filtered = [...mockNotifications];
-      if (role) {
-        filtered = filtered.filter(
-          (n) => n.roleTarget === "all" || n.roleTarget === role
-        );
-      }
-      filtered.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    let filtered = [...mockNotifications];
+    if (role) {
+      filtered = filtered.filter(
+        (n) => n.roleTarget === "all" || n.roleTarget === role
       );
-      return mockDelay(filtered);
     }
-    const { data } = await api.get<Notification[]>("/notifications", {
-      params: { role },
-    });
-    return data;
+    filtered.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    return mockDelay(filtered);
   },
 
   async markRead(id: string): Promise<ApiSuccessResponse> {

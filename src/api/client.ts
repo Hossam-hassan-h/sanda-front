@@ -11,15 +11,43 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+const toCamel = (s) => s.replace(/^_/, "").replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+
+const camelizeKeys = (obj) => {
+  if (Array.isArray(obj)) return obj.map(camelizeKeys);
+  if (obj && typeof obj === "object" && obj.constructor === Object) {
+    const result = {};
+    for (const [k, v] of Object.entries(obj)) {
+      result[toCamel(k)] = camelizeKeys(v);
+    }
+    return result;
+  }
+  return obj;
+};
+
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    if (res.data && typeof res.data === "object") {
+      if ("status" in res.data && "data" in res.data) {
+        const { status, data, ...rest } = res.data;
+        if (Array.isArray(data)) {
+          res.data = { ...rest, data };
+        } else if (Object.keys(rest).length > 0) {
+          res.data = { ...rest, ...data };
+        } else {
+          res.data = data;
+        }
+      }
+      res.data = camelizeKeys(res.data);
+    }
+    return res;
+  },
   (err) => {
     if (err.response?.status === 401) {
       localStorage.removeItem("sanda_token");
       localStorage.removeItem("sanda_user");
-      // Redirect to login on 401 (skip if already on auth pages)
-      if (!window.location.pathname.startsWith("/auth")) {
-        window.location.href = "/auth/login";
+      if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/register")) {
+        window.location.href = "/login";
       }
     }
     return Promise.reject(err);
@@ -28,5 +56,4 @@ api.interceptors.response.use(
 
 export default api;
 
-// Toggle this to switch from mock data to real backend calls.
-export const USE_MOCKS = true;
+export const USE_MOCKS = false;

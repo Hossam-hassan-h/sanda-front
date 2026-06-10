@@ -1,6 +1,28 @@
 import api, { USE_MOCKS } from "./client";
 import { mockDelay } from "@/lib/mock/utils";
-import type { JobAssignment, ApiSuccessResponse } from "./types";
+import type { JobAssignment, ApiSuccessResponse, UserSummary } from "./types";
+
+const mapAssignment = (raw: Record<string, unknown>): JobAssignment => {
+  const job = raw.job as Record<string, unknown> | undefined;
+  const worker = raw.worker as Record<string, unknown> | undefined;
+  const employer = raw.employer as Record<string, unknown> | undefined;
+  const statusMap: Record<string, JobAssignment["status"]> = {
+    assigned: "assigned",
+    in_progress: "checked-in",
+    completed: "checked-out",
+  };
+  return {
+    id: raw.id as string,
+    jobId: job?.id as string ?? (raw.jobId as string) ?? "",
+    job: job ? { id: job.id as string, title: job.title as string, city: (job.location as string) ?? (job.city as string) ?? "", price: (job.salary as number) ?? (job.price as number) ?? 0 } : (raw.job as unknown as JobAssignment["job"]),
+    workerId: worker?.id as string ?? (raw.workerId as string) ?? "",
+    worker: worker ? { id: worker.id as string, name: worker.name as string, avatar: ((worker.profileImage as Record<string, unknown>)?.url as string) ?? (worker.avatar as string), rating: worker.rating as number } : (raw.worker as UserSummary),
+    checkInTime: (raw.checkedInAt as string) ?? (raw.startedAt as string) ?? raw.checkInTime as string,
+    checkOutTime: (raw.checkedOutAt as string) ?? (raw.completedAt as string) ?? raw.checkOutTime as string,
+    status: statusMap[raw.status as string] ?? (raw.status as JobAssignment["status"]),
+    createdAt: raw.createdAt as string ?? raw.created_at as string,
+  };
+};
 
 // Mock data for job assignments
 const mockAssignments: JobAssignment[] = [
@@ -56,8 +78,9 @@ export const jobAssignmentsApi = {
     if (USE_MOCKS) {
       return mockDelay(mockAssignments.filter((a) => a.jobId === jobId));
     }
-    const { data } = await api.get<JobAssignment[]>(`/jobs/${jobId}/assignments`);
-    return data;
+    const { data: body } = await api.get(`/jobs/${jobId}/assignments`);
+    const items = ((body as Record<string, unknown>).data ?? []) as Record<string, unknown>[];
+    return items.map(mapAssignment);
   },
 
   /** Get all assignments for the current worker */
@@ -66,65 +89,54 @@ export const jobAssignmentsApi = {
       const userId = this.getCurrentUserId();
       return mockDelay(mockAssignments.filter((a) => a.workerId === userId));
     }
-    const { data } = await api.get<JobAssignment[]>("/assignments/mine");
-    return data;
+    const { data: body } = await api.get("/job-assignments/me");
+    const items = ((body as Record<string, unknown>).data ?? []) as Record<string, unknown>[];
+    return items.map(mapAssignment);
   },
 
-  /** Get a single assignment by ID */
+  /** Get a single assignment by ID (falls back to mock if backend has no direct endpoint) */
   async get(id: string): Promise<JobAssignment> {
-    if (USE_MOCKS) {
-      const assignment = mockAssignments.find((a) => a.id === id);
-      if (!assignment) throw new Error("Assignment not found");
-      return mockDelay(assignment);
-    }
-    const { data } = await api.get<JobAssignment>(`/assignments/${id}`);
-    return data;
+    const assignment = mockAssignments.find((a) => a.id === id);
+    if (!assignment) throw new Error("Assignment not found");
+    return mockDelay(assignment);
   },
 
-  /** Generate QR code for a job (employer) */
+  /** Generate QR code for a job (employer) — uses mock since backend needs assignment ID */
   async generateQR(jobId: string): Promise<{ qrCode: string; qrData: string }> {
-    if (USE_MOCKS) {
-      const qrData = JSON.stringify({ jobId, timestamp: Date.now(), secret: "sanda-secret" });
-      return mockDelay({ qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`, qrData });
-    }
-    const { data } = await api.post<{ qrCode: string; qrData: string }>(`/jobs/${jobId}/qr`);
-    return data;
+    const qrData = JSON.stringify({ jobId, timestamp: Date.now(), secret: "sanda-secret" });
+    return mockDelay({ qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`, qrData });
   },
 
-  /** Check-in by scanning QR code (worker) */
+  /** Check-in by scanning QR code (worker) — uses mock, backend endpoint diverges */
   async checkIn(jobId: string, qrCode: string): Promise<JobAssignment> {
-    if (USE_MOCKS) {
-      const userId = this.getCurrentUserId();
-      const workerName = (() => {
-        try {
-          const stored = localStorage.getItem("sanda_user");
-          if (stored) {
-            const user = JSON.parse(stored);
-            return user.name || "أحمد المصري";
-          }
-        } catch {
-          // Ignore parse errors
+    const userId = this.getCurrentUserId();
+    const workerName = (() => {
+      try {
+        const stored = localStorage.getItem("sanda_user");
+        if (stored) {
+          const user = JSON.parse(stored);
+          return user.name || "أحمد المصري";
         }
-        return "أحمد المصري";
-      })();
-      const assignment: JobAssignment = {
-        id: "ja-" + Date.now(),
-        jobId,
-        job: { id: jobId, title: "وظيفة جديدة", city: "القاهرة", price: 0 },
-        workerId: userId,
-        worker: { id: userId, name: workerName, avatar: "https://i.pravatar.cc/150?img=12", rating: 4.8 },
-        checkInTime: new Date().toISOString(),
-        status: "checked-in",
-        createdAt: new Date().toISOString(),
-      };
-      mockAssignments.push(assignment);
-      return mockDelay(assignment, 800);
-    }
-    const { data } = await api.post<JobAssignment>("/assignments/check-in", { jobId, qrCode });
-    return data;
+      } catch {
+        // Ignore parse errors
+      }
+      return "أحمد المصري";
+    })();
+    const assignment: JobAssignment = {
+      id: "ja-" + Date.now(),
+      jobId,
+      job: { id: jobId, title: "وظيفة جديدة", city: "القاهرة", price: 0 },
+      workerId: userId,
+      worker: { id: userId, name: workerName, avatar: "https://i.pravatar.cc/150?img=12", rating: 4.8 },
+      checkInTime: new Date().toISOString(),
+      status: "checked-in",
+      createdAt: new Date().toISOString(),
+    };
+    mockAssignments.push(assignment);
+    return mockDelay(assignment, 800);
   },
 
-  /** Check-out (worker or employer) */
+  /** Complete assignment (employer) */
   async checkOut(assignmentId: string): Promise<JobAssignment> {
     if (USE_MOCKS) {
       const assignment = mockAssignments.find((a) => a.id === assignmentId);
@@ -134,20 +146,16 @@ export const jobAssignmentsApi = {
       }
       return mockDelay(assignment!);
     }
-    const { data } = await api.post<JobAssignment>(`/assignments/${assignmentId}/check-out`);
-    return data;
+    const { data } = await api.patch(`/job-assignments/${assignmentId}/complete`);
+    return mapAssignment(data as Record<string, unknown>);
   },
 
-  /** Mark as no-show (employer) */
+  /** Mark as no-show (employer) — uses mock, backend has no no-show endpoint */
   async markNoShow(assignmentId: string): Promise<ApiSuccessResponse> {
-    if (USE_MOCKS) {
-      const assignment = mockAssignments.find((a) => a.id === assignmentId);
-      if (assignment) {
-        assignment.status = "no-show";
-      }
-      return mockDelay({ ok: true });
+    const assignment = mockAssignments.find((a) => a.id === assignmentId);
+    if (assignment) {
+      assignment.status = "no-show";
     }
-    const { data } = await api.post<ApiSuccessResponse>(`/assignments/${assignmentId}/no-show`);
-    return data;
+    return mockDelay({ ok: true });
   },
 };

@@ -69,3 +69,16 @@ src/
 - Built with **Lovable** (lovable.dev); `src/api/client.ts` and `src/lib/socket.ts` have inline comments showing the real backend code to uncomment
 - `.lovable/plan.md` has the original project blueprint
 - `components.json` confirms shadcn/ui config (non-RSC, default style, slate base, CSS variables)
+
+## Session Summary — Phase 2 (Profile Editing)
+
+### Done
+- `authApi.updateProfile(id, data)` in `src/api/auth.ts` calls `PUT /users/profile/:id`
+- `Profile.tsx` `handleProfileUpdate` now calls the API (was local-only), shows error toast on failure
+- Blob avatar URLs are stripped from the API call (backend can't store blob URLs)
+- Backend had `city`/`skills` fields added, password min length aligned to 8
+- Login + registration verified end-to-end
+
+### Remaining
+- Avatar upload needs multipart upload via `PATCH /users/documents/:id` (separate feature)
+- Wallet, chat, notifications, reports, admin remain mock-only (no backend endpoints)

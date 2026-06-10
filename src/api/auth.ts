@@ -6,6 +6,33 @@ import type { User, UserRole } from "./types";
 export interface LoginPayload { email: string; password: string; role?: UserRole }
 export interface RegisterPayload { name: string; email: string; phone?: string; password: string; role: UserRole }
 
+const mapUser = (raw: Record<string, unknown>): User => {
+  const user = { ...raw } as Record<string, unknown>;
+  if (user.profileImage && typeof user.profileImage === "object") {
+    user.avatar = (user.profileImage as Record<string, unknown>).url as string || null;
+  } else if (!user.avatar) {
+    user.avatar = null;
+  }
+  return {
+    id: (user.id as string) || (user.Id as string) || (user._id as string),
+    name: user.name as string,
+    email: user.email as string,
+    phone: user.phone as string || undefined,
+    role: user.role as UserRole,
+    avatar: user.avatar as string | undefined,
+    walletBalance: (user.walletBalance as number) ?? 0,
+    isVerified: (user.isVerified as boolean) ?? false,
+    isActive: (user.isActive as boolean) ?? true,
+    rating: user.rating as number | undefined,
+    ratingsCount: user.ratingsCount as number | undefined,
+    bio: user.bio as string | undefined,
+    city: user.city as string | undefined,
+    skills: user.skills as string[] | undefined,
+    createdAt: user.createdAt as string,
+    updatedAt: user.updatedAt as string | undefined,
+  } as User;
+};
+
 export const authApi = {
   async login(payload: LoginPayload): Promise<{ user: User; token: string }> {
     if (USE_MOCKS) {
@@ -14,7 +41,9 @@ export const authApi = {
       return mockDelay({ user, token: "mock-token-" + user.id });
     }
     const { data } = await api.post("/auth/login", payload);
-    return data;
+    localStorage.setItem("sanda_token", data.accessToken as string);
+    const user = await authApi.me();
+    return { user, token: data.accessToken as string };
   },
 
   async register(payload: RegisterPayload): Promise<{ user: User; token: string }> {
@@ -31,8 +60,11 @@ export const authApi = {
       };
       return mockDelay({ user, token: "mock-token-new" });
     }
-    const { data } = await api.post("/auth/register", payload);
-    return data;
+    const { data } = await api.post("/users/register", payload);
+    const token = data.accessToken as string;
+    const { accessToken: _, refreshToken: __, ...userRaw } = data as Record<string, unknown>;
+    localStorage.setItem("sanda_token", token);
+    return { user: mapUser(userRaw), token };
   },
 
   async me(): Promise<User> {
@@ -40,21 +72,29 @@ export const authApi = {
       const cached = localStorage.getItem("sanda_user");
       return mockDelay(cached ? JSON.parse(cached) : mockUsers[0]);
     }
-    const { data } = await api.get("/auth/me");
-    return data;
+    const { data } = await api.get("/users/profile");
+    return mapUser(data as Record<string, unknown>);
+  },
+
+  async updateProfile(id: string, data: Partial<User>): Promise<User> {
+    const { data: res } = await api.put(`/users/profile/${id}`, data);
+    return mapUser(res as Record<string, unknown>);
   },
 
   async getUser(id: string): Promise<User> {
-    if (USE_MOCKS) {
-      const cached = localStorage.getItem("sanda_user");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.id === id) return mockDelay(parsed);
+    if (!USE_MOCKS) {
+      try {
+        const { data } = await api.get(`/users/profile/${id}`);
+        return mapUser(data as Record<string, unknown>);
+      } catch {
       }
-      const user = mockUsers.find((u) => u.id === id);
-      return mockDelay(user ?? mockUsers[0]);
     }
-    const { data } = await api.get(`/users/${id}`);
-    return data;
+    const cached = localStorage.getItem("sanda_user");
+    if (cached) {
+      const parsed = JSON.parse(cached) as User;
+      if (parsed.id === id) return mockDelay(parsed);
+    }
+    const user = mockUsers.find((u) => u.id === id);
+    return mockDelay(user ?? mockUsers[0]);
   },
 };

@@ -45,15 +45,28 @@ export default function Profile() {
 
   const isOwnProfile = authUser !== null && profileUser !== null && authUser.id === profileUser.id;
 
-  const handleProfileUpdate = (updated: Partial<User>) => {
+  const handleProfileUpdate = async (updated: Partial<User>) => {
     if (!profileUser) return;
-    const merged = { ...profileUser, ...updated };
-    updateUser(merged);
-    setProfileUser(merged);
-    toast({
-      title: "تم الحفظ",
-      description: "تم تحديث بيانات ملفك الشخصي بنجاح.",
-    });
+    const payload = { ...updated };
+    if (payload.avatar?.startsWith("blob:")) {
+      delete payload.avatar;
+    }
+    try {
+      const user = await authApi.updateProfile(profileUser.id, payload);
+      const merged = { ...user, avatar: updated.avatar || user.avatar };
+      updateUser(merged);
+      setProfileUser(merged);
+      toast({
+        title: "تم الحفظ",
+        description: "تم تحديث بيانات ملفك الشخصي بنجاح.",
+      });
+    } catch {
+      toast({
+        title: "فشل الحفظ",
+        description: "حدث خطأ أثناء تحديث البيانات",
+        variant: "destructive",
+      });
+    }
   };
 
   if (loading || !profileUser) {
