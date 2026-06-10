@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Camera, Loader2, ChevronDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -49,8 +49,6 @@ interface EditProfileModalProps {
 }
 
 export default function EditProfileModal({ open, onOpenChange, user, userId, onSave }: EditProfileModalProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [bio, setBio] = useState("");
@@ -160,10 +158,7 @@ export default function EditProfileModal({ open, onOpenChange, user, userId, onS
     <div className="space-y-5 sm:space-y-6 text-right" dir="rtl">
       {/* Avatar */}
       <div className="flex flex-col items-center gap-3">
-        <div
-          className="relative group cursor-pointer"
-          onClick={() => fileInputRef.current?.click()}
-        >
+        <label htmlFor="avatar-upload" className="relative group cursor-pointer">
           <Avatar className="h-24 w-24 border-2 border-border">
             <AvatarImage src={avatarPreview || user.avatar} />
             <AvatarFallback className="text-2xl">{user.name.charAt(0)}</AvatarFallback>
@@ -172,16 +167,15 @@ export default function EditProfileModal({ open, onOpenChange, user, userId, onS
             <Camera className="w-6 h-6 text-white" />
             <span className="text-[10px] text-white mt-0.5 font-semibold">تغيير</span>
           </div>
-        </div>
+        </label>
         <input
-          ref={fileInputRef}
+          id="avatar-upload"
           type="file"
           accept="image/*"
           className="hidden"
           onChange={handleAvatarSelect}
         />
         <span className="text-xs text-muted-foreground">اختر صورة مربعة للحصول على أفضل نتيجة</span>
-        {/* Placeholder: Image cropper integration point */}
       </div>
 
       {/* Bio */}
