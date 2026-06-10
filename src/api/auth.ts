@@ -92,8 +92,8 @@ export const authApi = {
     form.append("profileImage", file);
     const { data } = await api.patch(`/users/documents/${userId}`, form);
     const u = data as Record<string, unknown>;
-    const pi = (u.profileImage ?? u.data?.profileImage) as Record<string, unknown> | undefined;
-    return (pi?.url as string) || "";
+    const pi = u.profileImage as { url?: string } | undefined;
+    return pi?.url ?? "";
   },
 
   async getUser(id: string): Promise<User> {
