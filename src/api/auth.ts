@@ -77,7 +77,12 @@ export const authApi = {
   },
 
   async updateProfile(id: string, data: Partial<User>): Promise<User> {
-    const { data: res } = await api.put(`/users/profile/${id}`, data);
+    const payload = { ...data } as Record<string, unknown>;
+    if (payload.avatar) {
+      payload.profile_image = { url: payload.avatar };
+      delete payload.avatar;
+    }
+    const { data: res } = await api.put(`/users/profile/${id}`, payload);
     return mapUser(res as Record<string, unknown>);
   },
 
