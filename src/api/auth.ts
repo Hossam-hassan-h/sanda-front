@@ -102,6 +102,7 @@ export const authApi = {
         const { data } = await api.get(`/users/profile/${id}`);
         return mapUser(data as Record<string, unknown>);
       } catch {
+        // fallback to mock data
       }
     }
     const cached = localStorage.getItem("sanda_user");
