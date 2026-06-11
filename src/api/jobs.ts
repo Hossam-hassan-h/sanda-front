@@ -19,7 +19,7 @@ const mapJob = (raw: Record<string, unknown>): Job => {
     title: raw.title as string,
     description: raw.description as string,
     category: (raw.category as string) ?? "",
-    city: (raw.city as string) ?? "",
+    city: (raw.location as string) ?? (raw.city as string) ?? "",
     address: (raw.location as string) ?? (raw.address as string) ?? "",
     latitude: raw.latitude as number | undefined,
     longitude: raw.longitude as number | undefined,
@@ -31,7 +31,7 @@ const mapJob = (raw: Record<string, unknown>): Job => {
     requiredWorkers: (raw.requiredWorkers as number) ?? (raw.requiredWorkers as number) ?? 1,
     status: (raw.status as string) === "in_progress" ? ("in-progress" as const) : (raw.status as Job["status"]),
     employerId: owner?.id as string ?? (raw.employerId as string) ?? "",
-    employer: owner ? mapOwnerToEmployer(owner) : (raw.employer as UserSummary),
+    employer: owner ? mapOwnerToEmployer(owner) : (raw.employer as UserSummary) ?? { id: "", name: "صاحب العمل" },
     workerId: raw.workerId as string | undefined,
     worker: raw.worker as UserSummary | undefined,
     applicantsCount: (raw.applicantsCount as number) ?? (raw.acceptedWorkersCount as number) ?? 0,
@@ -125,7 +125,7 @@ export const jobsApi = {
       title: payload.title,
       description: payload.description,
       category: payload.category,
-      location: payload.address,
+      location: [payload.city, payload.address].filter(Boolean).join(" - "),
       start_date: payload.startDate,
       end_date: payload.endDate,
       duration: payload.hours,
@@ -158,8 +158,9 @@ export const jobsApi = {
     if (payload.title) body.title = payload.title;
     if (payload.description) body.description = payload.description;
     if (payload.category) body.category = payload.category;
-    if (payload.city) body.location = payload.city;
-    if (payload.address) body.location = payload.address;
+    if (payload.city || payload.address) {
+      body.location = [payload.city, payload.address].filter(Boolean).join(" - ");
+    }
     if (payload.startDate) body.start_date = payload.startDate;
     if (payload.endDate) body.end_date = payload.endDate;
     if (payload.hours) body.duration = payload.hours;
@@ -235,7 +236,7 @@ export const jobsApi = {
 
   async myApplications(): Promise<Application[]> {
     if (USE_MOCKS) return mockDelay(mockApplications);
-    const { data: body } = await api.get("/applications/my");
+    const { data: body } = await api.get("/applications/me");
     const apps = ((body as Record<string, unknown>).data ?? []) as Record<string, unknown>[];
     return apps.map(mapApplication);
   },

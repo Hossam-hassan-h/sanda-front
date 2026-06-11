@@ -141,7 +141,7 @@ const mapNotification = (raw: Record<string, unknown>): Notification => ({
   title: raw.title as string,
   message: raw.message as string,
   type: (raw.type as Notification["type"]) ?? "system",
-  roleTarget: "user",
+  roleTarget: (raw.roleTarget as Notification["roleTarget"]) ?? "all",
   isRead: (raw.isRead as boolean) ?? (raw.is_read as boolean) ?? false,
   createdAt: (raw.createdAt as string) ?? (raw.created_at as string),
   metadata: raw.metadata as Record<string, unknown> | undefined,

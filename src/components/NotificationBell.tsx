@@ -14,7 +14,7 @@ export default memo(function NotificationBell() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const role = user?.role;
+  const role = user?.role === "employer" ? "user" : user?.role;
   const { data: notifications, isLoading } = useNotifications(role);
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
