@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Briefcase } from "lucide-react";
@@ -8,14 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import LocationPicker from "@/components/LocationPicker";
 import { useCreateJob } from "@/hooks/useJobs";
 import { toast } from "@/hooks/use-toast";
-import type { Location } from "@/api/types";
 
 interface FormValues {
-  title: string; description: string; category: string; city: string;
-  price: number; hours: number; startDate: string;
+  title: string; description: string; category: string; city: string; address: string;
+  price: number; hours: number; startDate: string; requiredWorkers: number;
 }
 
 const categories = ["ضيافة وفعاليات", "تنظيف", "صيانة وتركيبات", "مطاعم", "تسويق ميداني", "تصوير", "توصيل"];
@@ -26,21 +23,9 @@ export default function PostJob() {
   const create = useCreateJob();
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>();
 
-  const [location, setLocation] = useState<Location>({ address: "", method: "manual" });
-
   const onSubmit = async (values: FormValues) => {
-    if (!location.address) {
-      toast({ title: "العنوان التفصيلي مطلوب", variant: "destructive" });
-      return;
-    }
     try {
-      const job = await create.mutateAsync({
-        ...values,
-        address: location.address,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        method: location.method,
-      });
+      const job = await create.mutateAsync(values);
       toast({ title: "تم نشر الوظيفة بنجاح", description: "هتبدأ تستقبل تقديمات قريباً." });
       navigate(`/jobs/${job.id}`);
     } catch {
@@ -93,12 +78,10 @@ export default function PostJob() {
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-4">
-            <LocationPicker
-              value={location}
-              onChange={setLocation}
-              addressError={!location.address ? "العنوان التفصيلي مطلوب" : undefined}
-            />
+          <div>
+            <Label htmlFor="address">العنوان التفصيلي *</Label>
+            <Input id="address" placeholder="مثال: ١٢ شارع النيل، الدور الثالث" {...register("address", { required: "العنوان مطلوب" })} />
+            {errors.address && <p className="text-destructive text-sm mt-1">{errors.address.message}</p>}
           </div>
 
           <div>
@@ -106,7 +89,7 @@ export default function PostJob() {
             <Textarea id="description" rows={5} placeholder="اشرح المهام المطلوبة، الزي، أي شروط خاصة..." {...register("description", { required: "الوصف مطلوب" })} />
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="price">السعر (جنيه) *</Label>
               <Input id="price" type="number" min={50} placeholder="500" {...register("price", { required: true, valueAsNumber: true, min: 50 })} />
@@ -114,6 +97,10 @@ export default function PostJob() {
             <div>
               <Label htmlFor="hours">عدد الساعات *</Label>
               <Input id="hours" type="number" min={1} placeholder="6" {...register("hours", { required: true, valueAsNumber: true, min: 1 })} />
+            </div>
+            <div>
+              <Label htmlFor="requiredWorkers">عدد العمال *</Label>
+              <Input id="requiredWorkers" type="number" min={1} placeholder="1" {...register("requiredWorkers", { required: true, valueAsNumber: true, min: 1 })} />
             </div>
             <div>
               <Label htmlFor="startDate">تاريخ البدء *</Label>
