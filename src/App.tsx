@@ -5,7 +5,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import ProtectedRoute, { NonAdminRoute } from "@/components/ProtectedRoute";
 import PageLoader from "@/components/PageLoader";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
@@ -45,6 +45,7 @@ const AdminWallet       = lazy(() => import("./pages/admin/AdminWallet"));
 const AdminChatMonitor  = lazy(() => import("./pages/admin/AdminChatMonitor"));
 const AdminUserLogs     = lazy(() => import("./pages/admin/AdminUserLogs"));
 const AdminUserDetail   = lazy(() => import("./pages/admin/AdminUserDetail"));
+const AdminSettings     = lazy(() => import("./pages/admin/AdminSettings"));
 
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -82,8 +83,11 @@ function AppProviders({ children }: { children: ReactNode }) {
 
 /** Redirects authenticated users away from public-only pages (e.g. Landing). */
 function PublicOnlyRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Navigate to="/jobs" replace />;
+  const { isAuthenticated, user } = useAuth();
+  if (isAuthenticated) {
+    if (user?.role === "admin") return <Navigate to="/admin" replace />;
+    return <Navigate to="/jobs" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -113,29 +117,30 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
 
           {/* ── Jobs ───────────────────────────────────────────── */}
-          <Route path="/jobs" element={<JobsFeed />} />
+          <Route path="/jobs" element={<NonAdminRoute><JobsFeed /></NonAdminRoute>} />
           <Route path="/jobs/new" element={<ProtectedRoute roles={["employer"]}><PostJob /></ProtectedRoute>} />
-          <Route path="/jobs/:id" element={<JobDetails />} />
+          <Route path="/jobs/:id" element={<NonAdminRoute><JobDetails /></NonAdminRoute>} />
           <Route path="/jobs/:id/edit" element={<ProtectedRoute roles={["employer"]}><EditJob /></ProtectedRoute>} />
           <Route path="/jobs/:id/applicants" element={<ProtectedRoute roles={["employer"]}><Applicants /></ProtectedRoute>} />
-          <Route path="/jobs/:id/active" element={<ProtectedRoute><ActiveJob /></ProtectedRoute>} />
+          <Route path="/jobs/:id/active" element={<ProtectedRoute roles={["worker","employer"]}><ActiveJob /></ProtectedRoute>} />
           <Route path="/jobs/:id/assignments" element={<ProtectedRoute roles={["employer"]}><JobAssignments /></ProtectedRoute>} />
           <Route path="/my-jobs" element={<ProtectedRoute roles={["employer"]}><MyJobs /></ProtectedRoute>} />
           <Route path="/my-jobs-active" element={<ProtectedRoute roles={["worker"]}><WorkerJobs /></ProtectedRoute>} />
 
           {/* ── User workspace ─────────────────────────────────── */}
-          <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
-          <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/profile/:id" element={<Profile />} />
-          <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+          <Route path="/wallet" element={<ProtectedRoute roles={["worker","employer"]}><Wallet /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute roles={["worker","employer"]}><Chat /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute roles={["worker","employer"]}><Profile /></ProtectedRoute>} />
+          <Route path="/profile/:id" element={<NonAdminRoute><Profile /></NonAdminRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute roles={["worker","employer"]}><NotificationsPage /></ProtectedRoute>} />
 
-          {/* ── Settings ───────────────────────────────────────── */}
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/settings/verification" element={<ProtectedRoute><Verification /></ProtectedRoute>} />
+          {/* ── Settings ── */}
+          <Route path="/settings" element={<ProtectedRoute roles={["worker","employer"]}><Settings /></ProtectedRoute>} />
+          <Route path="/settings/verification" element={<ProtectedRoute roles={["worker","employer"]}><Verification /></ProtectedRoute>} />
 
           {/* ── Admin ──────────────────────────────────────────── */}
           <Route path="/admin" element={<AdminRedirect />} />
+          <Route path="/admin/settings" element={<ProtectedRoute roles={["admin"]}><AdminSettings /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute roles={["admin"]}><AdminUsers /></ProtectedRoute>} />
           <Route path="/admin/users/:id" element={<ProtectedRoute roles={["admin"]}><AdminUserDetail /></ProtectedRoute>} />
           <Route path="/admin/reports" element={<ProtectedRoute roles={["admin"]}><AdminReports /></ProtectedRoute>} />

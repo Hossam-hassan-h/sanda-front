@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, Flag, Briefcase, Wallet, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Users, Flag, Briefcase, Wallet, MessageCircle, ScrollText, Settings } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import AdminHeader from "@/components/admin/AdminHeader";
 
@@ -11,6 +11,8 @@ const adminLinks = [
   { to: "/admin/jobs", label: "الوظائف", icon: Briefcase },
   { to: "/admin/wallet", label: "المحفظة", icon: Wallet },
   { to: "/admin/chat-monitor", label: "مراقبة الدردشة", icon: MessageCircle },
+  { to: "/admin/user-logs", label: "سجل النشاطات", icon: ScrollText },
+  { to: "/admin/settings", label: "الإعدادات", icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
