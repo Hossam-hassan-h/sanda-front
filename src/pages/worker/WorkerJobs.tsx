@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Clock, MapPin, QrCode, CheckCircle } from "lucide-react";
+import { Clock, MapPin, QrCode, CheckCircle, XCircle, Hourglass } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
-import { useJobs } from "@/hooks/useJobs";
+import { useJobs, useMyApplications } from "@/hooks/useJobs";
 import { useMyAssignments } from "@/hooks/useJobAssignments";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,31 +10,40 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
-import type { JobAssignment } from "@/api/types";
+import type { JobAssignment, Application } from "@/api/types";
+
+const applicationBadge: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: typeof Clock; label: string }> = {
+  pending: { variant: "secondary", icon: Hourglass, label: "قيد المراجعة" },
+  accepted: { variant: "default", icon: CheckCircle, label: "تم القبول" },
+  rejected: { variant: "destructive", icon: XCircle, label: "مرفوض" },
+};
 
 export default function WorkerJobs() {
   const { user } = useAuth();
   const { data: allJobs, isLoading: jobsLoading } = useJobs({});
+  const { data: applications, isLoading: appsLoading } = useMyApplications();
   const { data: assignments, isLoading: assignmentsLoading } = useMyAssignments();
 
-  const isLoading = jobsLoading || assignmentsLoading;
+  const isLoading = jobsLoading || appsLoading || assignmentsLoading;
 
-  // Get the worker's accepted jobs (jobs where the workerId matches the user)
-  const acceptedJobs = useMemo(() => {
-    if (!allJobs || !user) return [];
-    const acceptedApplicationIds = assignments
-      ?.filter((a) => a.workerId === user.id)
-      .map((a) => a.jobId) || [];
-    
-    return allJobs.filter(
-      (j) =>
-        (j.workerId === user.id || acceptedApplicationIds.includes(j.id)) &&
-        (j.status === "in-progress" || j.status === "completed")
-    );
-  }, [allJobs, user, assignments]);
+  // Jobs the worker has applied to + their application status
+  const appliedJobs = useMemo(() => {
+    if (!allJobs || !applications || !user) return [];
+    const userApps = applications.filter((a) => a.worker?.id === user.id || a.workerId === user.id);
+    return userApps
+      .map((app) => ({
+        job: allJobs.find((j) => j.id === app.jobId),
+        application: app,
+      }))
+      .filter((item): item is { job: NonNullable<typeof item.job>; application: Application } => !!item.job);
+  }, [allJobs, applications, user]);
 
-  const activeJobs = acceptedJobs.filter((j) => j.status === "in-progress");
-  const completedJobs = acceptedJobs.filter((j) => j.status === "completed");
+  const pendingJobs = appliedJobs.filter(({ application }) => application.status === "pending");
+  const acceptedJobs = appliedJobs.filter(({ application }) => application.status === "accepted");
+  const rejectedJobs = appliedJobs.filter(({ application }) => application.status === "rejected");
+
+  // Active jobs (accepted + in-progress)
+  const activeJobs = acceptedJobs.filter(({ job }) => job.status === "in-progress");
 
   const getAssignmentForJob = (jobId: string): JobAssignment | undefined => {
     return assignments?.find((a) => a.jobId === jobId && a.workerId === user?.id);
@@ -57,20 +66,18 @@ export default function WorkerJobs() {
     <UserLayout>
       <div className="container mx-auto px-4 md:px-6 py-10">
         <div className="mb-6">
-          <h1 className="font-heading font-extrabold text-3xl">وظائفي النشطة</h1>
-          <p className="text-muted-foreground">الوظائف اللي تم قبولك فيها وتقدّر تتابعها</p>
+          <h1 className="font-heading font-extrabold text-3xl">وظائفي</h1>
+          <p className="text-muted-foreground">الوظائف اللي تقدمت ليها وتابع حالتها</p>
         </div>
 
         <Tabs defaultValue="active">
-          <TabsList className="mb-6">
-            <TabsTrigger value="active">
-              قيد التنفيذ ({activeJobs.length})
-            </TabsTrigger>
-            <TabsTrigger value="completed">
-              مكتملة ({completedJobs.length})
-            </TabsTrigger>
+          <TabsList className="mb-6 flex-wrap">
+            <TabsTrigger value="active">قيد التنفيذ ({activeJobs.length})</TabsTrigger>
+            <TabsTrigger value="pending">قيد المراجعة ({pendingJobs.length})</TabsTrigger>
+            <TabsTrigger value="rejected">مرفوضة ({rejectedJobs.length})</TabsTrigger>
           </TabsList>
 
+          {/* ── Active ── */}
           <TabsContent value="active">
             {isLoading ? (
               <div className="space-y-4">
@@ -78,7 +85,7 @@ export default function WorkerJobs() {
               </div>
             ) : activeJobs.length > 0 ? (
               <div className="space-y-4">
-                {activeJobs.map((job) => {
+                {activeJobs.map(({ job }) => {
                   const assignment = getAssignmentForJob(job.id);
                   return (
                     <Card key={job.id} className="hover:shadow-md transition-shadow">
@@ -101,7 +108,6 @@ export default function WorkerJobs() {
                           <span>{job.price} جنيه</span>
                         </div>
 
-                        {/* Assignment Status */}
                         {assignment && (
                           <div className="bg-muted/50 rounded-lg p-3 mb-4">
                             <div className="flex items-center gap-2 text-sm">
@@ -140,9 +146,7 @@ export default function WorkerJobs() {
                             </Link>
                           </Button>
                           <Button variant="outline" asChild>
-                            <Link to={`/jobs/${job.id}`}>
-                              التفاصيل
-                            </Link>
+                            <Link to={`/jobs/${job.id}`}>التفاصيل</Link>
                           </Button>
                         </div>
                       </CardContent>
@@ -155,11 +159,9 @@ export default function WorkerJobs() {
                 <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
                   <Clock className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-heading font-bold text-lg text-muted-foreground mb-2">
-                  لا توجد وظائف نشطة
-                </h3>
+                <h3 className="font-heading font-bold text-lg text-muted-foreground mb-2">لا توجد وظائف نشطة</h3>
                 <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-                  لما يتم قبولك في وظيفة، هتظهر هنا تقدر تسجل حضورك وانصرافك عن طريق QR Code
+                  لما يتم قبولك في وظيفة، هتظهر هنا تقدر تسجل حضورك وانصرافك
                 </p>
                 <Button asChild>
                   <Link to="/jobs">تصفح الوظائف المتاحة</Link>
@@ -168,28 +170,42 @@ export default function WorkerJobs() {
             )}
           </TabsContent>
 
-          <TabsContent value="completed">
-            {completedJobs.length > 0 ? (
+          {/* ── Pending Applications ── */}
+          <TabsContent value="pending">
+            {isLoading ? (
               <div className="space-y-4">
-                {completedJobs.map((job) => {
-                  const assignment = getAssignmentForJob(job.id);
+                {[1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+              </div>
+            ) : pendingJobs.length > 0 ? (
+              <div className="space-y-4">
+                {pendingJobs.map(({ job, application }) => {
+                  const cfg = applicationBadge[application.status];
+                  const Icon = cfg.icon;
                   return (
-                    <Card key={job.id}>
+                    <Card key={`${job.id}-${application.id}`}>
                       <CardContent className="p-5">
-                        <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-heading font-bold text-lg">{job.title}</h3>
-                            <p className="text-sm text-muted-foreground">{job.city}</p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <MapPin className="h-3.5 w-3.5" /> {job.city}
+                            </p>
                           </div>
-                          <Badge className="bg-green-100 text-green-700">
-                            مكتملة
+                          <Badge variant={cfg.variant}>
+                            <Icon className="h-3 w-3 mr-1" />
+                            {cfg.label}
                           </Badge>
                         </div>
-                        {assignment?.checkOutTime && (
-                          <p className="text-sm text-muted-foreground">
-                            تم الانصراف: {new Date(assignment.checkOutTime).toLocaleString("ar-EG")}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
+                          <span>{job.hours} ساعات</span>
+                          <span>{job.price} جنيه</span>
+                          <span>{new Date(application.createdAt).toLocaleDateString("ar-EG")}</span>
+                        </div>
+                        <div className="mt-3">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to={`/jobs/${job.id}`}>عرض التفاصيل</Link>
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   );
@@ -197,7 +213,52 @@ export default function WorkerJobs() {
               </div>
             ) : (
               <div className="text-center py-20 text-muted-foreground">
-                لا توجد وظائف مكتملة بعد
+                <Hourglass className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                <p>لا توجد طلبات قيد المراجعة</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ── Rejected ── */}
+          <TabsContent value="rejected">
+            {rejectedJobs.length > 0 ? (
+              <div className="space-y-4">
+                {rejectedJobs.map(({ job, application }) => {
+                  const cfg = applicationBadge[application.status];
+                  const Icon = cfg.icon;
+                  return (
+                    <Card key={`${job.id}-${application.id}`}>
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-heading font-bold text-lg">{job.title}</h3>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <MapPin className="h-3.5 w-3.5" /> {job.city}
+                            </p>
+                          </div>
+                          <Badge variant={cfg.variant}>
+                            <Icon className="h-3 w-3 mr-1" />
+                            {cfg.label}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
+                          <span>{job.hours} ساعات</span>
+                          <span>{job.price} جنيه</span>
+                        </div>
+                        <div className="mt-3">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to="/jobs">البحث عن وظائف أخرى</Link>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-20 text-muted-foreground">
+                <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500 opacity-30" />
+                <p>لا توجد طلبات مرفوضة</p>
               </div>
             )}
           </TabsContent>

@@ -129,4 +129,11 @@ export const authApi = {
     const user = mockUsers.find((u) => u.id === id);
     return mockDelay(user ?? mockUsers[0]);
   },
+
+  async updatePassword(id: string, payload: { currentPassword: string; newPassword: string }): Promise<void> {
+    if (USE_MOCKS) {
+      return mockDelay(undefined);
+    }
+    await api.put(`/users/profile/${id}`, { currentPassword: payload.currentPassword, password: payload.newPassword });
+  },
 };

@@ -68,3 +68,9 @@ export const useRejectApplicant = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["applicants"] }),
   });
 };
+
+export const useMyApplications = () =>
+  useQuery({
+    queryKey: ["my-applications"],
+    queryFn: () => jobsApi.myApplications(),
+  });

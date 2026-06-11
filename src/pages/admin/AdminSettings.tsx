@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { authApi } from "@/api/auth";
 import { Key } from "lucide-react";
 
 export default function AdminSettings() {
@@ -27,14 +28,13 @@ export default function AdminSettings() {
     }
     setSaving(true);
     try {
-      // TODO: Call API to update password when backend endpoint is ready
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (user?.id) await authApi.updatePassword(user.id, { currentPassword, newPassword });
       toast({ title: "تم التحديث", description: "تم تغيير كلمة المرور بنجاح" });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch {
-      toast({ title: "خطأ", description: "فشل تغيير كلمة المرور", variant: "destructive" });
+      toast({ title: "خطأ", description: "فشل تغيير كلمة المرور. تحقق من كلمة المرور الحالية", variant: "destructive" });
     } finally {
       setSaving(false);
     }

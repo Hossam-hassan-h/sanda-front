@@ -232,4 +232,11 @@ export const jobsApi = {
     const ratings = ((body as Record<string, unknown>).data ?? []) as Record<string, unknown>[];
     return ratings as Rating[];
   },
+
+  async myApplications(): Promise<Application[]> {
+    if (USE_MOCKS) return mockDelay(mockApplications);
+    const { data: body } = await api.get("/applications/my");
+    const apps = ((body as Record<string, unknown>).data ?? []) as Record<string, unknown>[];
+    return apps.map(mapApplication);
+  },
 };

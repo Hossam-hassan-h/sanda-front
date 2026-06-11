@@ -1,7 +1,8 @@
-import api from "@/api/client";
+import api, { USE_MOCKS } from "@/api/client";
 import type { User } from "@/api/types";
 import type { PaginatedResponse, AdminUsersParams } from "../admin-types";
 import { mapBackendUser } from "../admin-mappers";
+import { mockUsers } from "@/lib/mock/data";
 
 function stripPagination(params?: AdminUsersParams): Record<string, unknown> {
   if (!params) return {};
@@ -11,7 +12,30 @@ function stripPagination(params?: AdminUsersParams): Record<string, unknown> {
   );
 }
 
+function filterMockUsers(params?: AdminUsersParams): User[] {
+  let result = [...mockUsers] as User[];
+  if (params?.search) {
+    const q = params.search.toLowerCase();
+    result = result.filter((u) => u.name.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q));
+  }
+  if (params?.role) result = result.filter((u) => u.role === params.role);
+  if (params?.status === "active") result = result.filter((u) => u.isActive !== false);
+  if (params?.status === "banned") result = result.filter((u) => u.isActive === false);
+  return result;
+}
+
 export async function fetchUsers(params?: AdminUsersParams): Promise<PaginatedResponse<User> | null> {
+  if (USE_MOCKS) {
+    const filtered = filterMockUsers(params);
+    const page = params?.page || 1;
+    const pageSize = params?.pageSize || 10;
+    return {
+      data: filtered.slice((page - 1) * pageSize, page * pageSize),
+      total: filtered.length,
+      page,
+      pageSize,
+    };
+  }
   try {
     const backendParams = stripPagination(params);
     const response = await api.get("/users/", { params: backendParams });
@@ -36,6 +60,7 @@ export async function fetchUsers(params?: AdminUsersParams): Promise<PaginatedRe
 }
 
 export async function fetchAllUsers(): Promise<User[] | null> {
+  if (USE_MOCKS) return filterMockUsers();
   try {
     const response = await api.get("/users/");
     const body = response.data as { data: Record<string, unknown>[] };
@@ -49,6 +74,7 @@ export async function fetchAllUsers(): Promise<User[] | null> {
 }
 
 export async function fetchUserById(id: string): Promise<User | null> {
+  if (USE_MOCKS) return (mockUsers as User[]).find((u) => u.id === id) ?? null;
   try {
     const response = await api.get(`/users/profile/${id}`);
     const raw = response.data as Record<string, unknown>;

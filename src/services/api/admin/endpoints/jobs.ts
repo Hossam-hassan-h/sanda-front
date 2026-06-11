@@ -1,9 +1,18 @@
-import api from "@/api/client";
+import api, { USE_MOCKS } from "@/api/client";
 import type { Job } from "@/api/types";
 import type { PaginatedResponse, AdminJobsParams } from "../admin-types";
 import { mapBackendJob } from "../admin-mappers";
+import { mockJobs } from "@/lib/mock/data";
 
 export async function fetchJobs(params?: AdminJobsParams): Promise<PaginatedResponse<Job> | null> {
+  if (USE_MOCKS) {
+    let result = [...mockJobs];
+    if (params?.status) result = result.filter((j) => j.status === params.status);
+    if (params?.category) result = result.filter((j) => j.category === params.category);
+    const page = params?.page ?? 1;
+    const pageSize = params?.pageSize ?? 10;
+    return { data: result.slice((page - 1) * pageSize, page * pageSize), total: result.length, page, pageSize };
+  }
   try {
     const backendParams: Record<string, unknown> = {};
     if (params?.status) backendParams.status = params.status;
@@ -27,6 +36,7 @@ export async function fetchJobs(params?: AdminJobsParams): Promise<PaginatedResp
 }
 
 export async function fetchJobById(id: string): Promise<Job | null> {
+  if (USE_MOCKS) return mockJobs.find((j) => j.id === id) ?? null;
   try {
     const response = await api.get(`/jobs/${id}`);
     const raw = response.data as Record<string, unknown>;
