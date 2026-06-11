@@ -117,11 +117,9 @@ describe("QRGenerator Component", () => {
     // Verify job title is shown
     expect(screen.getByText("مساعد مطبخ")).toBeInTheDocument();
 
-    // Verify toast was called
-    expect(toast).toHaveBeenCalledWith({
-      title: "تم توليد QR Code",
-      description: "صالح لمدة 24 ساعة",
-    });
+    // QR generation now updates the displayed QR state without emitting a toast.
+    expect(screen.getByRole("button", { name: /تحميل/ })).toBeInTheDocument();
+    expect(toast).not.toHaveBeenCalled();
   });
 });
 

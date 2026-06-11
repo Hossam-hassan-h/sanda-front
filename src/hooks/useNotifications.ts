@@ -1,24 +1,22 @@
-import { useQuery, useMutation, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseMutationResult } from "@tanstack/react-query";
 import { notificationsApi } from "@/api/notifications";
 import type { Notification } from "@/api/types";
 
 export const NOTIF_KEY = ["notifications"] as const;
+export const NOTIF_UNREAD_KEY = ["notifications", "unread-count"] as const;
 
-// ─── Query hooks ─────────────────────────────────────────────────
-
-export const useNotifications = (role?: string) =>
+export const useNotifications = (_role?: string) =>
   useQuery({
-    queryKey: [...NOTIF_KEY, role],
-    queryFn: () => notificationsApi.list(role),
+    queryKey: NOTIF_KEY,
+    queryFn: () => notificationsApi.list(),
   });
 
-// ─── Shared mutation helper ───────────────────────────────────────
+export const useNotificationUnreadCount = () =>
+  useQuery({
+    queryKey: NOTIF_UNREAD_KEY,
+    queryFn: () => notificationsApi.unreadCount(),
+  });
 
-/**
- * Shared helper that handles optimistic updates for notification mutations.
- * Eliminates the duplicated onMutate / onError / onSettled boilerplate
- * that was repeated in every notification mutation hook.
- */
 function useNotificationMutation<TArgs>(
   mutationFn: (args: TArgs) => Promise<unknown>,
   optimisticUpdate: (old: Notification[] | undefined, args: TArgs) => Notification[],
@@ -40,27 +38,19 @@ function useNotificationMutation<TArgs>(
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: NOTIF_KEY });
+      qc.invalidateQueries({ queryKey: NOTIF_UNREAD_KEY });
     },
   });
 }
 
-/** Mark a single notification as read. */
 export const useMarkNotificationRead = () =>
   useNotificationMutation(
     (id: string) => notificationsApi.markRead(id),
-    (old, id) => old?.map((n) => (n.id === id ? { ...n, isRead: true } : n)) ?? [],
+    (old, id) => old?.map((n) => (n.id === id ? { ...n, isRead: true, is_read: true } : n)) ?? [],
   );
 
-/** Mark all notifications as read. */
 export const useMarkAllNotificationsRead = () =>
   useNotificationMutation(
     () => notificationsApi.markAllRead(),
-    (old) => old?.map((n) => ({ ...n, isRead: true })) ?? [],
-  );
-
-/** Delete a notification. */
-export const useDeleteNotification = () =>
-  useNotificationMutation(
-    (id: string) => notificationsApi.delete(id),
-    (old, id) => old?.filter((n) => n.id !== id) ?? [],
+    (old) => old?.map((n) => ({ ...n, isRead: true, is_read: true })) ?? [],
   );

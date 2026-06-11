@@ -1,53 +1,43 @@
-import api, { USE_MOCKS } from "./client";
-import { mockConversations, mockMessages } from "@/lib/mock/data";
-import { mockDelay } from "@/lib/mock/utils";
-import type { Conversation, Message, MessageAttachment } from "./types";
+import api from "./client";
+import type { Conversation, Message } from "./types";
 
-const mockSendResponse = (conversationId: string, message: string, attachments?: File[]): Message => {
-  const fileAttachments: MessageAttachment[] | undefined = attachments?.length
-    ? attachments.map((f) => ({
-        name: f.name,
-        size: f.size,
-        type: f.type,
-        url: URL.createObjectURL(f),
-      }))
-    : undefined;
-  return {
-    id: "m" + Date.now(),
-    conversationId,
-    senderId: "u1",
-    message,
-    attachments: fileAttachments,
-    isRead: false,
-    createdAt: new Date().toISOString(),
-  };
-};
+interface PaginatedResponse<T> {
+  data: T[];
+  pagination?: Record<string, unknown>;
+}
 
 export const chatApi = {
+  async createConversation(assignmentId: string): Promise<Conversation> {
+    const { data } = await api.post(`/job-assignments/${assignmentId}/conversation`);
+    return data;
+  },
+
   async conversations(): Promise<Conversation[]> {
-    if (!USE_MOCKS) {
-      try { const { data } = await api.get("/conversations"); return data; } catch { /* fallback */ }
-    }
-    return mockDelay(mockConversations);
+    const { data } = await api.get<PaginatedResponse<Conversation> | Conversation[]>("/conversations");
+    return Array.isArray(data) ? data : data.data ?? [];
   },
-  async messages(conversationId: string): Promise<Message[]> {
-    if (!USE_MOCKS) {
-      try { const { data } = await api.get(`/conversations/${conversationId}/messages`); return data; } catch { /* fallback */ }
-    }
-    return mockDelay(mockMessages[conversationId] ?? []);
+
+  async conversation(conversationId: string): Promise<Conversation> {
+    const { data } = await api.get(`/conversations/${conversationId}`);
+    return data;
   },
-  async send(conversationId: string, message: string, attachments?: File[]): Promise<Message> {
-    if (!USE_MOCKS) {
-      try {
-        const formData = new FormData();
-        formData.append("message", message);
-        attachments?.forEach((f) => formData.append("attachments", f));
-        const { data } = await api.post(`/conversations/${conversationId}/messages`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-        return data;
-      } catch { /* fallback */ }
-    }
-    return mockDelay(mockSendResponse(conversationId, message, attachments));
+
+  async messages(conversationId: string, before?: string): Promise<Message[]> {
+    const params = before ? { before } : undefined;
+    const { data } = await api.get<PaginatedResponse<Message> | Message[]>(
+      `/conversations/${conversationId}/messages`,
+      { params },
+    );
+    return Array.isArray(data) ? data : data.data ?? [];
+  },
+
+  async send(conversationId: string, content: string): Promise<Message> {
+    const { data } = await api.post(`/conversations/${conversationId}/messages`, { content });
+    return data;
+  },
+
+  async markRead(conversationId: string): Promise<{ modifiedCount?: number; modified_count?: number }> {
+    const { data } = await api.patch(`/conversations/${conversationId}/read`);
+    return data;
   },
 };
