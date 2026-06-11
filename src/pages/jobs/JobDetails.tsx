@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { useJob, useApplyToJob } from "@/hooks/useJobs";
+import { useJob, useApplyToJob, useApplicants } from "@/hooks/useJobs";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +21,8 @@ export default function JobDetails() {
   const apply = useApplyToJob();
   const [message, setMessage] = useState("");
   const [open, setOpen] = useState(false);
+
+  const { data: applicants } = useApplicants(id ?? "");
 
   const handleApply = async () => {
     if (!job) return;
@@ -81,7 +83,7 @@ export default function JobDetails() {
                 <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {job.city} — {job.address}</span>
                 <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {job.hours} ساعات</span>
                 <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {new Date(job.startDate).toLocaleDateString("ar-EG", { dateStyle: "medium" })}</span>
-                <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {job.applicantsCount} متقدم</span>
+                <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {isJobOwner ? (applicants?.length ?? job.applicantsCount) : job.applicantsCount} متقدم</span>
               </div>
 
               <h2 className="font-heading font-bold text-lg mb-2">الوصف</h2>
@@ -168,7 +170,7 @@ export default function JobDetails() {
               </Button>
             ) : user.role === "employer" && job.employerId === user.id ? (
               <Button variant="default" size="lg" className="w-full" asChild>
-                <Link to={`/jobs/${job.id}/applicants`}>مشاهدة المتقدمين ({job.applicantsCount})</Link>
+                <Link to={`/jobs/${job.id}/applicants`}>مشاهدة المتقدمين ({applicants?.length ?? job.applicantsCount})</Link>
               </Button>
             ) : null}
 

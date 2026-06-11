@@ -59,7 +59,8 @@ export default function NotificationsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const { data: notifications, isLoading, isError } = useNotifications(user?.role);
+  const role = user?.role === "employer" ? "user" : user?.role;
+  const { data: notifications, isLoading, isError } = useNotifications(role);
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const deleteNotif = useDeleteNotification();
@@ -82,14 +83,16 @@ export default function NotificationsPage() {
 
   const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
 
+  const isAdmin = user?.role === "admin";
+
   const handleNotificationClick = (notif: Notification) => {
     if (!notif.isRead) {
       markRead.mutate(notif.id);
     }
     if (notif.metadata?.jobId) {
-      navigate(`/admin/jobs/${notif.metadata.jobId}`);
+      navigate(isAdmin ? `/admin/jobs/${notif.metadata.jobId}` : `/jobs/${notif.metadata.jobId}`);
     } else if (notif.metadata?.reportId) {
-      navigate(`/admin/reports/${notif.metadata.reportId}`);
+      navigate(isAdmin ? `/admin/reports/${notif.metadata.reportId}` : `/`);
     } else if (notif.metadata?.conversationId) {
       navigate(`/chat`);
     }
