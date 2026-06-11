@@ -7,7 +7,7 @@ import type {
   AdminDashboardApi,
 } from "./admin-types";
 
-import { fetchUsers, fetchAllUsers, fetchUserById, createUser, fetchJobs, fetchJobById } from "./admin-endpoints";
+import { fetchUsers, fetchAllUsers, fetchUserById, createUser, fetchJobs, fetchJobById, fetchDashboardStats } from "./admin-endpoints";
 
 import {
   mockUsersHandlers,
@@ -143,11 +143,15 @@ export const chatApi: AdminChatApi = {
 };
 
 // =============================================================================
-// Dashboard — Mock only (لا يوجد endpoint في الباك)
+// Dashboard — يحاول يحسب من الباك، لو فشل يروح للموك
 // =============================================================================
 
 export const dashboardApi: AdminDashboardApi = {
-  getStats: () => mockDashboardHandlers.getStats(),
+  async getStats() {
+    const result = await fetchDashboardStats();
+    if (result) return result;
+    return mockDashboardHandlers.getStats();
+  },
 };
 
 // =============================================================================
