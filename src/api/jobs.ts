@@ -130,7 +130,7 @@ export const jobsApi = {
       end_date: payload.endDate,
       duration: payload.hours,
       salary: payload.price,
-      required_workers: payload.requiredWorkers,
+      required_workers: payload.requiredWorkers ?? 1,
     };
     const { data } = await api.post("/jobs", body);
     return mapJob(data as Record<string, unknown>);
