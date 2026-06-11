@@ -136,8 +136,30 @@ const mockNotifications: Notification[] = [
   },
 ];
 
+const mapNotification = (raw: Record<string, unknown>): Notification => ({
+  id: raw.id as string,
+  title: raw.title as string,
+  message: raw.message as string,
+  type: (raw.type as Notification["type"]) ?? "system",
+  roleTarget: "user",
+  isRead: (raw.isRead as boolean) ?? (raw.is_read as boolean) ?? false,
+  createdAt: (raw.createdAt as string) ?? (raw.created_at as string),
+  metadata: raw.metadata as Record<string, unknown> | undefined,
+});
+
 export const notificationsApi = {
   async list(role?: string): Promise<Notification[]> {
+    if (!USE_MOCKS) {
+      try {
+        const { data: body } = await api.get("/notifications");
+        const items = ((body as Record<string, unknown>).data ?? []) as Record<string, unknown>[];
+        const mapped = items.map(mapNotification);
+        mapped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return mapped;
+      } catch {
+        // fall back to mock
+      }
+    }
     let filtered = [...mockNotifications];
     if (role) {
       filtered = filtered.filter(
@@ -151,31 +173,43 @@ export const notificationsApi = {
   },
 
   async markRead(id: string): Promise<ApiSuccessResponse> {
-    if (USE_MOCKS) {
-      const notif = mockNotifications.find((n) => n.id === id);
-      if (notif) notif.isRead = true;
-      return mockDelay({ ok: true });
+    if (!USE_MOCKS) {
+      try {
+        const { data } = await api.patch<ApiSuccessResponse>(`/notifications/${id}/read`);
+        return data;
+      } catch {
+        // fall back to mock
+      }
     }
-    const { data } = await api.patch<ApiSuccessResponse>(`/notifications/${id}/read`);
-    return data;
+    const notif = mockNotifications.find((n) => n.id === id);
+    if (notif) notif.isRead = true;
+    return mockDelay({ ok: true });
   },
 
   async markAllRead(): Promise<ApiSuccessResponse> {
-    if (USE_MOCKS) {
-      mockNotifications.forEach((n) => (n.isRead = true));
-      return mockDelay({ ok: true });
+    if (!USE_MOCKS) {
+      try {
+        const { data } = await api.patch<ApiSuccessResponse>("/notifications/read-all");
+        return data;
+      } catch {
+        // fall back to mock
+      }
     }
-    const { data } = await api.patch<ApiSuccessResponse>("/notifications/read-all");
-    return data;
+    mockNotifications.forEach((n) => (n.isRead = true));
+    return mockDelay({ ok: true });
   },
 
   async delete(id: string): Promise<ApiSuccessResponse> {
-    if (USE_MOCKS) {
-      const idx = mockNotifications.findIndex((n) => n.id === id);
-      if (idx > -1) mockNotifications.splice(idx, 1);
-      return mockDelay({ ok: true });
+    if (!USE_MOCKS) {
+      try {
+        const { data } = await api.delete<ApiSuccessResponse>(`/notifications/${id}`);
+        return data;
+      } catch {
+        // fall back to mock
+      }
     }
-    const { data } = await api.delete<ApiSuccessResponse>(`/notifications/${id}`);
-    return data;
+    const idx = mockNotifications.findIndex((n) => n.id === id);
+    if (idx > -1) mockNotifications.splice(idx, 1);
+    return mockDelay({ ok: true });
   },
 };

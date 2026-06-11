@@ -10,6 +10,7 @@ const mapAssignment = (raw: Record<string, unknown>): JobAssignment => {
     assigned: "assigned",
     in_progress: "checked-in",
     completed: "checked-out",
+    cancelled: "no-show",
   };
   return {
     id: raw.id as string,
@@ -94,11 +95,20 @@ export const jobAssignmentsApi = {
     return items.map(mapAssignment);
   },
 
-  /** Get a single assignment by ID (falls back to mock if backend has no direct endpoint) */
+  /** Get a single assignment by ID */
   async get(id: string): Promise<JobAssignment> {
-    const assignment = mockAssignments.find((a) => a.id === id);
-    if (!assignment) throw new Error("Assignment not found");
-    return mockDelay(assignment);
+    try {
+      const { data } = await api.get(`/job-assignments/${id}`);
+      return mapAssignment((data as Record<string, unknown>).data as Record<string, unknown> ?? data as Record<string, unknown>);
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        const assignment = mockAssignments.find((a) => a.id === id);
+        if (!assignment) throw new Error("Assignment not found");
+        return mockDelay(assignment);
+      }
+      throw err;
+    }
   },
 
   /** Generate QR code for a job (employer) — uses mock since backend needs assignment ID */
@@ -150,12 +160,21 @@ export const jobAssignmentsApi = {
     return mapAssignment(data as Record<string, unknown>);
   },
 
-  /** Mark as no-show (employer) — uses mock, backend has no no-show endpoint */
+  /** Mark as no-show (employer) */
   async markNoShow(assignmentId: string): Promise<ApiSuccessResponse> {
-    const assignment = mockAssignments.find((a) => a.id === assignmentId);
-    if (assignment) {
-      assignment.status = "no-show";
+    try {
+      const { data } = await api.patch<ApiSuccessResponse>(`/job-assignments/${assignmentId}/no-show`);
+      return data;
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        const assignment = mockAssignments.find((a) => a.id === assignmentId);
+        if (assignment) {
+          assignment.status = "no-show";
+        }
+        return mockDelay({ ok: true });
+      }
+      throw err;
     }
-    return mockDelay({ ok: true });
   },
 };

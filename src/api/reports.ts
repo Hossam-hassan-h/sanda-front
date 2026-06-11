@@ -3,56 +3,54 @@ import { mockDelay } from "@/lib/mock/utils";
 import { mockReports, mockUsers } from "@/lib/mock/data";
 import type { CreateReportPayload, Report, ApiSuccessResponse } from "./types";
 
+const mockCreateReport = (payload: CreateReportPayload): Report => {
+  const reported = mockUsers.find((u) => u.id === payload.reportedUserId);
+  const reportedBy = mockUsers.find((u) => u.id === "u1") ?? mockUsers[0];
+  return {
+    id: "rp" + Date.now(),
+    reportedUserId: payload.reportedUserId,
+    reportedUser: {
+      id: reported?.id ?? payload.reportedUserId,
+      name: reported?.name ?? "مستخدم",
+      avatar: reported?.avatar,
+      rating: reported?.rating,
+    },
+    reportedById: reportedBy.id,
+    reportedBy: {
+      id: reportedBy.id,
+      name: reportedBy.name,
+      avatar: reportedBy.avatar,
+    },
+    reason: payload.reason,
+    status: "open",
+    jobId: payload.jobId,
+    createdAt: new Date().toISOString(),
+  };
+};
+
 export const reportsApi = {
-  /** Submit a new report against a user (optionally tied to a job). */
   async create(payload: CreateReportPayload): Promise<Report> {
-    if (USE_MOCKS) {
-      const reported = mockUsers.find((u) => u.id === payload.reportedUserId);
-      const reportedBy = mockUsers.find((u) => u.id === "u1") ?? mockUsers[0];
-      const report: Report = {
-        id: "rp" + Date.now(),
-        reportedUserId: payload.reportedUserId,
-        reportedUser: {
-          id: reported?.id ?? payload.reportedUserId,
-          name: reported?.name ?? "مستخدم",
-          avatar: reported?.avatar,
-          rating: reported?.rating,
-        },
-        reportedById: reportedBy.id,
-        reportedBy: {
-          id: reportedBy.id,
-          name: reportedBy.name,
-          avatar: reportedBy.avatar,
-        },
-        reason: payload.reason,
-        status: "open",
-        jobId: payload.jobId,
-        createdAt: new Date().toISOString(),
-      };
-      mockReports.unshift(report);
-      return mockDelay(report);
+    if (!USE_MOCKS) {
+      try { const { data } = await api.post<Report>("/reports", payload); return data; } catch { /* fallback */ }
     }
-    const { data } = await api.post<Report>("/reports", payload);
-    return data;
+    const report = mockCreateReport(payload);
+    mockReports.unshift(report);
+    return mockDelay(report);
   },
 
-  /** List reports filed by the current user. */
   async mine(): Promise<Report[]> {
-    if (USE_MOCKS) {
-      return mockDelay(mockReports.filter((r) => r.reportedById === "u1"));
+    if (!USE_MOCKS) {
+      try { const { data } = await api.get<Report[]>("/reports/mine"); return data; } catch { /* fallback */ }
     }
-    const { data } = await api.get<Report[]>("/reports/mine");
-    return data;
+    return mockDelay(mockReports.filter((r) => r.reportedById === "u1"));
   },
 
-  /** Update the status of a report (admin only — but exposed here for completeness). */
   async updateStatus(id: string, status: Report["status"]): Promise<ApiSuccessResponse> {
-    if (USE_MOCKS) {
-      const r = mockReports.find((x) => x.id === id);
-      if (r) r.status = status;
-      return mockDelay({ ok: true });
+    if (!USE_MOCKS) {
+      try { const { data } = await api.patch<ApiSuccessResponse>(`/reports/${id}/status`, { status }); return data; } catch { /* fallback */ }
     }
-    const { data } = await api.patch<ApiSuccessResponse>(`/reports/${id}/status`, { status });
-    return data;
+    const r = mockReports.find((x) => x.id === id);
+    if (r) r.status = status;
+    return mockDelay({ ok: true });
   },
 };

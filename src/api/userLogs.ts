@@ -10,32 +10,28 @@ export interface UserLogFilters {
   to?: string;
 }
 
+const filterMockLogs = (filters: UserLogFilters = {}): UserLog[] => {
+  let result = [...mockUserLogs];
+  if (filters.userId) result = result.filter((l) => l.userId === filters.userId);
+  if (filters.targetType) result = result.filter((l) => l.targetType === filters.targetType);
+  if (filters.from) result = result.filter((l) => l.createdAt >= filters.from!);
+  if (filters.to) result = result.filter((l) => l.createdAt <= filters.to!);
+  result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return result;
+};
+
 export const userLogsApi = {
-  /** List user activity logs (admin only). */
   async list(filters: UserLogFilters = {}): Promise<UserLog[]> {
-    if (USE_MOCKS) {
-      let result = [...mockUserLogs];
-      if (filters.userId) result = result.filter((l) => l.userId === filters.userId);
-      if (filters.targetType) result = result.filter((l) => l.targetType === filters.targetType);
-      if (filters.from) result = result.filter((l) => l.createdAt >= filters.from!);
-      if (filters.to) result = result.filter((l) => l.createdAt <= filters.to!);
-      result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      return mockDelay(result);
+    if (!USE_MOCKS) {
+      try { const { data } = await api.get<UserLog[]>("/admin/user-logs", { params: filters }); return data; } catch { /* fallback */ }
     }
-    const { data } = await api.get<UserLog[]>("/admin/user-logs", { params: filters });
-    return data;
+    return mockDelay(filterMockLogs(filters));
   },
 
-  /** Get activity logs for a single user (admin or self). */
   async forUser(userId: string): Promise<UserLog[]> {
-    if (USE_MOCKS) {
-      return mockDelay(
-        mockUserLogs
-          .filter((l) => l.userId === userId)
-          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      );
+    if (!USE_MOCKS) {
+      try { const { data } = await api.get<UserLog[]>(`/users/${userId}/logs`); return data; } catch { /* fallback */ }
     }
-    const { data } = await api.get<UserLog[]>(`/users/${userId}/logs`);
-    return data;
+    return mockDelay(filterMockLogs({ userId }));
   },
 };

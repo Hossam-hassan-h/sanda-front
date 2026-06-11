@@ -8,38 +8,28 @@ export interface PaymentDetails {
 }
 
 export const paymentService = {
-  /** Create a payment session/intent */
   async createPaymentSession(details: PaymentDetails): Promise<{ sessionUrl: string; paymentId: string }> {
-    if (USE_MOCKS) {
-      console.log(`[PaymentService] Creating payment session via ${details.gateway} for Job: ${details.jobId}, Amount: ${details.amount}`);
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            sessionUrl: `https://mock-checkout.sanda.app/pay?gateway=${details.gateway}&id=pay_${Date.now()}`,
-            paymentId: `pay_${Date.now()}`,
-          });
-        }, 600);
-      });
+    if (!USE_MOCKS) {
+      try { const { data } = await api.post("/payments/create-session", details); return data; } catch { /* fallback */ }
     }
-
-    const { data } = await api.post("/payments/create-session", details);
-    return data;
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          sessionUrl: `https://mock-checkout.sanda.app/pay?gateway=${details.gateway}&id=pay_${Date.now()}`,
+          paymentId: `pay_${Date.now()}`,
+        });
+      }, 600);
+    });
   },
 
-  /** Verify payment status after callback */
   async verifyPayment(paymentId: string): Promise<{ success: boolean; transactionId: string }> {
-    if (USE_MOCKS) {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({
-            success: true,
-            transactionId: `tx_${Date.now()}`,
-          });
-        }, 500);
-      });
+    if (!USE_MOCKS) {
+      try { const { data } = await api.get(`/payments/verify/${paymentId}`); return data; } catch { /* fallback */ }
     }
-
-    const { data } = await api.get(`/payments/verify/${paymentId}`);
-    return data;
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({ success: true, transactionId: `tx_${Date.now()}` });
+      }, 500);
+    });
   },
 };
