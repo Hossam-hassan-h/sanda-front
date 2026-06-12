@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
+import RatingForm from "@/components/RatingForm";
+import ReportForm from "@/components/ReportForm";
 import type { JobAssignment, Application } from "@/api/types";
 
 const applicationBadge: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: typeof Clock; label: string }> = {
@@ -26,24 +28,29 @@ export default function WorkerJobs() {
 
   const isLoading = jobsLoading || appsLoading || assignmentsLoading;
 
-  // Jobs the worker has applied to + their application status
   const appliedJobs = useMemo(() => {
-    if (!allJobs || !applications || !user) return [];
-    const userApps = applications.filter((a) => a.worker?.id === user.id || a.workerId === user.id);
-    return userApps
+    if (!applications) return [];
+    return applications
       .map((app) => ({
-        job: allJobs.find((j) => j.id === app.jobId),
+        job: app.job ?? allJobs?.find((j) => j.id === app.jobId),
         application: app,
       }))
       .filter((item): item is { job: NonNullable<typeof item.job>; application: Application } => !!item.job);
-  }, [allJobs, applications, user]);
+  }, [applications, allJobs]);
 
   const pendingJobs = appliedJobs.filter(({ application }) => application.status === "pending");
   const acceptedJobs = appliedJobs.filter(({ application }) => application.status === "accepted");
   const rejectedJobs = appliedJobs.filter(({ application }) => application.status === "rejected");
 
-  // Active jobs (accepted + in-progress)
-  const activeJobs = acceptedJobs.filter(({ job }) => job.status === "in-progress");
+  const activeJobs = acceptedJobs;
+
+  const completedJobs = useMemo(() => {
+    if (!assignments || !acceptedJobs.length) return [];
+    return acceptedJobs.filter(({ job }) => {
+      const assignment = assignments.find((a) => a.jobId === job.id && a.workerId === user?.id);
+      return assignment?.status === "checked-out" || assignment?.status === "completed";
+    });
+  }, [assignments, acceptedJobs, user]);
 
   const getAssignmentForJob = (jobId: string): JobAssignment | undefined => {
     return assignments?.find((a) => a.jobId === jobId && a.workerId === user?.id);
@@ -73,6 +80,7 @@ export default function WorkerJobs() {
         <Tabs defaultValue="active">
           <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="active">قيد التنفيذ ({activeJobs.length})</TabsTrigger>
+            <TabsTrigger value="completed">مكتملة ({completedJobs.length})</TabsTrigger>
             <TabsTrigger value="pending">قيد المراجعة ({pendingJobs.length})</TabsTrigger>
             <TabsTrigger value="rejected">مرفوضة ({rejectedJobs.length})</TabsTrigger>
           </TabsList>
@@ -104,7 +112,7 @@ export default function WorkerJobs() {
                         </div>
 
                         <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                          <span>{job.hours} ساعات</span>
+                          {job.hours ? <span>{job.hours} ساعات</span> : null}
                           <span>{job.price} جنيه</span>
                         </div>
 
@@ -170,6 +178,87 @@ export default function WorkerJobs() {
             )}
           </TabsContent>
 
+          {/* ── Completed ── */}
+          <TabsContent value="completed">
+            {isLoading ? (
+              <div className="space-y-4">
+                {[1, 2].map((i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
+              </div>
+            ) : completedJobs.length > 0 ? (
+              <div className="space-y-4">
+                {completedJobs.map(({ job }) => {
+                  const assignment = getAssignmentForJob(job.id);
+                  return (
+                    <Card key={job.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="font-heading font-bold text-lg">{job.title}</h3>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <MapPin className="h-3.5 w-3.5" /> {job.city}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            مكتملة
+                          </Badge>
+                        </div>
+
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                          <span>{job.hours} ساعات</span>
+                          <span>{job.price} جنيه</span>
+                        </div>
+
+                        {assignment?.checkInTime && assignment?.checkOutTime && (
+                          <div className="bg-muted/50 rounded-lg p-3 mb-4 text-xs text-muted-foreground">
+                            <span>الحضور: {new Date(assignment.checkInTime).toLocaleTimeString("ar-EG")}</span>
+                            <span className="mx-2">|</span>
+                            <span>الانصراف: {new Date(assignment.checkOutTime).toLocaleTimeString("ar-EG")}</span>
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          {job.employer && (
+                            <RatingForm
+                              reviewedUserId={job.employer.id ?? job.employerId}
+                              reviewedUserName={job.employer.name}
+                              jobId={job.id}
+                            />
+                          )}
+                          {job.employer && (
+                            <ReportForm
+                              reportedUserId={job.employer.id ?? job.employerId}
+                              reportedUserName={job.employer.name}
+                              jobId={job.id}
+                            />
+                          )}
+                          <div className="flex gap-2 pt-1">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link to={`/jobs/${job.id}`}>التفاصيل</Link>
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-20">
+                <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <h3 className="font-heading font-bold text-lg text-muted-foreground mb-2">لا توجد وظائف مكتملة</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
+                  الوظائف اللي خلصتها هتظهر هنا عشان تقيم وتكتب رأيك
+                </p>
+                <Button asChild>
+                  <Link to="/jobs">تصفح الوظائف المتاحة</Link>
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+
           {/* ── Pending Applications ── */}
           <TabsContent value="pending">
             {isLoading ? (
@@ -197,7 +286,7 @@ export default function WorkerJobs() {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground mt-3">
-                          <span>{job.hours} ساعات</span>
+                          {job.hours ? <span>{job.hours} ساعات</span> : null}
                           <span>{job.price} جنيه</span>
                           <span>{new Date(application.createdAt).toLocaleDateString("ar-EG")}</span>
                         </div>

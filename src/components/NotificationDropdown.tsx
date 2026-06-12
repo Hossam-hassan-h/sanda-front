@@ -1,6 +1,6 @@
 import { memo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Briefcase, Check, Flag, Info, MessageCircle, User } from "lucide-react";
+import { Bell, Briefcase, Check, Flag, Info, MessageCircle, ShieldCheck, User } from "lucide-react";
 import type { Notification } from "@/api/types";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ const typeConfig: Record<string, { icon: ReactNode; color: string }> = {
   report: { icon: <Flag className="w-4 h-4" />, color: "bg-red-100 text-red-700" },
   system: { icon: <Info className="w-4 h-4" />, color: "bg-gray-100 text-gray-700" },
   message_received: { icon: <MessageCircle className="w-4 h-4" />, color: "bg-purple-100 text-purple-700" },
+  verification_request: { icon: <ShieldCheck className="w-4 h-4" />, color: "bg-amber-100 text-amber-700" },
 };
 
 const getDateLabel = (date: string) =>
@@ -51,9 +52,18 @@ export default memo(function NotificationDropdown({
         ? notification.conversation?.id ?? notification.conversation?._id
         : notification.conversation;
     const notifType = notification.type;
+    const entityType = notification.entityType;
 
     if (conversationId || notification.metadata?.conversationId) {
       navigate(`/chat?conversation=${conversationId ?? notification.metadata?.conversationId}`);
+    } else if (notifType === "application_accepted" && userRole === "worker") {
+      navigate("/my-jobs-active");
+    } else if (entityType === "report") {
+      const reportId = notification.entityId ?? notification.metadata?.reportId;
+      if (reportId) navigate(`/admin/reports/${reportId}`);
+    } else if (notifType === "verification_request" && isAdmin) {
+      const targetId = notification.entityId ?? (typeof notification.actor === "string" ? notification.actor : notification.actor?.id ?? notification.actor?._id);
+      if (targetId) navigate(`/admin/users/${targetId}`);
     } else if (jobId || notification.metadata?.jobId) {
       const targetJobId = jobId ?? notification.metadata?.jobId;
       if (isAdmin) {
@@ -63,8 +73,6 @@ export default memo(function NotificationDropdown({
       } else {
         navigate(`/jobs/${targetJobId}`);
       }
-    } else if (notification.metadata?.reportId) {
-      navigate(`/admin/reports/${notification.metadata.reportId}`);
     }
 
     onClose();

@@ -7,6 +7,7 @@ import type { User, Job } from "@/api/types";
  */
 export function mapBackendUser(raw: Record<string, unknown>): User {
   const profileImage = raw.profileImage as Record<string, unknown> | undefined;
+  const rawVerificationStatus = raw.verificationStatus as string | undefined;
 
   return {
     id: (raw.id as string) ?? (raw._id as string),
@@ -16,13 +17,17 @@ export function mapBackendUser(raw: Record<string, unknown>): User {
     role: raw.role as User["role"],
     avatar: profileImage?.url as string | undefined,
     isActive: (raw.isActive as boolean) ?? true,
-    isVerified: false,
+    isVerified: (raw.isVerified as boolean) ?? false,
+    is_verified: (raw.isVerified as boolean) ?? false,
+    verification_status: (rawVerificationStatus as User["verification_status"]) ?? "none",
     walletBalance: 0,
     bio: raw.bio as string | undefined,
     city: raw.city as string | undefined,
     skills: raw.skills as string[] | undefined,
     createdAt: raw.createdAt as string,
     updatedAt: raw.updatedAt as string | undefined,
+    nationalId: raw.nationalId as User["nationalId"],
+    profile_image: profileImage as User["profile_image"],
   };
 }
 

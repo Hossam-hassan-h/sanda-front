@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { MapPin, Clock, Calendar, Users, Star, ShieldCheck, MessageCircle, ArrowLeft, QrCode, Loader2 } from "lucide-react";
+import { MapPin, Clock, Calendar, Users, Star, ShieldCheck, MessageCircle, ArrowLeft, QrCode, Loader2, CheckCircle, XCircle } from "lucide-react";
 import MapView from "@/components/MapView";
 import UserLayout from "@/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { useJob, useApplyToJob, useApplicants } from "@/hooks/useJobs";
+import { useJob, useApplyToJob, useApplicants, useMyApplications } from "@/hooks/useJobs";
 import { useJobAssignments, useMyAssignments } from "@/hooks/useJobAssignments";
 import { useCreateConversation } from "@/hooks/useChat";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQueryClient } from "@tanstack/react-query";
+import ReportForm from "@/components/ReportForm";
 import type { GeoCoordinates } from "@/lib/geolocation";
 
 export default function JobDetails() {
@@ -29,11 +31,16 @@ export default function JobDetails() {
   const isEmployer = user?.role === "employer";
 
   const { data: applicants } = useApplicants(id ?? "");
+  const { data: myApplications } = useMyApplications();
   // Fetch assignments according to user role to avoid 403 errors
   const { data: employerAssignments } = useJobAssignments(isEmployer ? (id ?? "") : "");
   const { data: workerAssignments } = useMyAssignments();
 
+  const queryClient = useQueryClient();
   const createConversation = useCreateConversation();
+
+  const myApplication = isWorker ? (myApplications ?? []).find((a) => a.jobId === job?.id) : undefined;
+  const appStatus = myApplication?.status;
 
   const handleMessage = useCallback(async () => {
     if (!job || !user) return;
@@ -61,6 +68,7 @@ export default function JobDetails() {
     try {
       await apply.mutateAsync({ jobId: job.id, message });
       toast({ title: "تم إرسال طلبك", description: "صاحب العمل هيتواصل معاك قريباً." });
+      queryClient.invalidateQueries({ queryKey: ["my-applications"] });
       setOpen(false);
       setMessage("");
     } catch {
@@ -72,7 +80,10 @@ export default function JobDetails() {
   if (!job) return <UserLayout><div className="container mx-auto px-4 py-20 text-center text-muted-foreground">الوظيفة غير موجودة.</div></UserLayout>;
 
   const isJobOwner = isEmployer && job.employerId === user?.id;
-  const isAcceptedWorker = isWorker && job.workerId === user?.id;
+
+  const workerAssignment = isWorker ? (workerAssignments ?? []).find((a) => a.jobId === job.id) : undefined;
+  const isWorkerDone = workerAssignment?.status === "checked-out" || workerAssignment?.status === "completed";
+  const hasCompletedAssignments = isEmployer && (employerAssignments ?? []).some((a) => a.status === "checked-out" || a.status === "completed");
 
   const hasCoords = job.latitude && job.longitude;
   const mapMarkers = hasCoords ? [{
@@ -167,7 +178,26 @@ export default function JobDetails() {
               </div>
             </div>
 
-            {isWorker && job.status === "open" ? (
+            {!user ? (
+              <Button variant="accent" size="lg" className="w-full" asChild>
+                <Link to="/login">سجّل دخول للتقديم</Link>
+              </Button>
+            ) : isWorker && appStatus === "accepted" ? (
+              <Button variant="default" size="lg" className="w-full bg-success text-white hover:bg-success/90" disabled>
+                <CheckCircle className="h-4 w-4 ml-2" />
+                تم القبول
+              </Button>
+            ) : isWorker && appStatus === "rejected" ? (
+              <Button variant="destructive" size="lg" className="w-full" disabled>
+                <XCircle className="h-4 w-4 ml-2" />
+                مرفوض
+              </Button>
+            ) : isWorker && (appStatus === "pending" || myApplication) ? (
+              <Button variant="secondary" size="lg" className="w-full" disabled>
+                <CheckCircle className="h-4 w-4 ml-2" />
+                تم التقديم
+              </Button>
+            ) : isWorker && job.status === "open" ? (
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                   <Button variant="accent" size="lg" className="w-full">تقديم على الوظيفة</Button>
@@ -193,25 +223,23 @@ export default function JobDetails() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-            ) : !user ? (
-              <Button variant="accent" size="lg" className="w-full" asChild>
-                <Link to="/login">سجّل دخول للتقديم</Link>
-              </Button>
             ) : user.role === "employer" && job.employerId === user.id ? (
               <Button variant="default" size="lg" className="w-full" asChild>
                 <Link to={`/jobs/${job.id}/applicants`}>مشاهدة المتقدمين ({applicants?.length ?? job.applicantsCount})</Link>
               </Button>
             ) : null}
 
-            {/* أزرار للمستخدمين المقبولين في الوظيفة */}
-            {(isAcceptedWorker || isJobOwner) && job.status === "in-progress" && (
+            {/* أزرار للمستخدمين المقبولين — بغض النظر عن حالة الوظيفة */}
+            {((isWorker && appStatus === "accepted") || isJobOwner) && (
               <div className="space-y-2">
-                <Button variant="accent" size="lg" className="w-full" asChild>
-                  <Link to={`/jobs/${job.id}/active`}>
-                    <QrCode className="h-4 w-4" /> 
-                    {isAcceptedWorker ? "تسجيل الحضور بالـ QR" : "عرض QR Code والحضور"}
-                  </Link>
-                </Button>
+                {!isWorkerDone && (
+                  <Button variant="accent" size="lg" className="w-full" asChild>
+                    <Link to={`/jobs/${job.id}/active`}>
+                      <QrCode className="h-4 w-4" /> 
+                      {isWorker ? "تسجيل الحضور بالـ QR" : "عرض QR Code والحضور"}
+                    </Link>
+                  </Button>
+                )}
                 {isJobOwner && (
                   <Button variant="default" size="lg" className="w-full" asChild>
                     <Link to={`/jobs/${job.id}/assignments`}>
@@ -219,39 +247,62 @@ export default function JobDetails() {
                     </Link>
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full"
-                  onClick={handleMessage}
-                  disabled={createConversation.isPending}
-                >
-                  {createConversation.isPending ? (
-                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                  ) : (
-                    <MessageCircle className="h-4 w-4 ml-2" />
-                  )}
-                  مراسلة {isAcceptedWorker ? "صاحب العمل" : "العامل"}
-                </Button>
+                {/* شات للعامل فقط */}
+                {isWorker && appStatus === "accepted" && (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full"
+                    onClick={handleMessage}
+                    disabled={createConversation.isPending}
+                  >
+                    {createConversation.isPending ? (
+                      <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                    ) : (
+                      <MessageCircle className="h-4 w-4 ml-2" />
+                    )}
+                    مراسلة صاحب العمل
+                  </Button>
+                )}
+
+                {/* تقييم لما العامل يخلص */}
+                {(isWorkerDone || hasCompletedAssignments) && (
+                  <>
+                    {isJobOwner && (
+                      <Button variant="default" size="lg" className="w-full" asChild>
+                        <Link to={`/jobs/${job.id}/rate-worker`}>
+                          <Star className="h-4 w-4 ml-2" />
+                          تقييم العامل
+                        </Link>
+                      </Button>
+                    )}
+                    {isWorker && isWorkerDone && (
+                      <Button variant="default" size="lg" className="w-full" asChild>
+                        <Link to={`/jobs/${job.id}/rate-employer`}>
+                          <Star className="h-4 w-4 ml-2" />
+                          تقييم صاحب العمل
+                        </Link>
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
             )}
 
-            {/* شات فقط لو مكتملة */}
-            {(isAcceptedWorker || isJobOwner) && job.status !== "in-progress" && (
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full"
-                onClick={handleMessage}
-                disabled={createConversation.isPending}
-              >
-                {createConversation.isPending ? (
-                  <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                ) : (
-                  <MessageCircle className="h-4 w-4 ml-2" />
-                )}
-                مراسلة {isAcceptedWorker ? "صاحب العمل" : "العامل"}
-              </Button>
+            {/* إبلاغ */}
+            {user && isWorker && appStatus === "accepted" && job.employer && (
+              <ReportForm
+                reportedUserId={job.employer.id ?? job.employerId}
+                reportedUserName={job.employer.name}
+                jobId={job.id}
+              />
+            )}
+            {user && isJobOwner && job.workerId && (
+              <ReportForm
+                reportedUserId={job.workerId}
+                reportedUserName={"العامل"}
+                jobId={job.id}
+              />
             )}
           </aside>
         </div>

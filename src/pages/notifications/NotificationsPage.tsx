@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Bell, Briefcase, Check, Flag, Filter, Info, MessageCircle, User } from "lucide-react";
+import { AlertTriangle, Bell, Briefcase, Check, Flag, Filter, Info, MessageCircle, ShieldCheck, User } from "lucide-react";
 import AdminLayout from "@/layouts/AdminLayout";
 import {
   useMarkAllNotificationsRead,
@@ -22,6 +22,7 @@ const typeConfig: Record<string, { icon: React.ReactNode; label: string; color: 
   report: { icon: <Flag className="w-4 h-4" />, label: "بلاغات", color: "bg-red-100 text-red-700" },
   system: { icon: <Info className="w-4 h-4" />, label: "نظام", color: "bg-gray-100 text-gray-700" },
   message_received: { icon: <MessageCircle className="w-4 h-4" />, label: "رسائل", color: "bg-purple-100 text-purple-700" },
+  verification_request: { icon: <ShieldCheck className="w-4 h-4" />, label: "توثيق", color: "bg-amber-100 text-amber-700" },
 };
 
 const typeFilters = [
@@ -30,6 +31,7 @@ const typeFilters = [
   { value: "job", label: "الوظائف" },
   { value: "user", label: "المستخدمين" },
   { value: "report", label: "البلاغات" },
+  { value: "verification_request", label: "التوثيق" },
   { value: "system", label: "النظام" },
 ];
 
@@ -74,10 +76,26 @@ export default function NotificationsPage() {
         : notification.conversation;
     const userRole = user?.role;
     const notifType = notification.type;
+    const entityType = notification.entityType;
 
     if (conversationId || notification.metadata?.conversationId) {
       navigate(`/chat?conversation=${conversationId ?? notification.metadata?.conversationId}`);
       return;
+    }
+
+    if (notifType === "application_accepted" && userRole === "worker") {
+      navigate("/my-jobs-active");
+      return;
+    }
+
+    if (entityType === "report") {
+      const reportId = notification.entityId ?? notification.metadata?.reportId;
+      if (reportId) { navigate(`/admin/reports/${reportId}`); return; }
+    }
+
+    if (notifType === "verification_request" && userRole === "admin") {
+      const targetId = notification.entityId ?? (typeof notification.actor === "string" ? notification.actor : notification.actor?.id ?? notification.actor?._id);
+      if (targetId) { navigate(`/admin/users/${targetId}`); return; }
     }
 
     if (notification.metadata?.reportId) {

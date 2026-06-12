@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import StarRating from "@/components/StarRating";
 import { authApi } from "@/api/auth";
-import { useRatings } from "@/hooks/useJobs";
+import { useUserRatings } from "@/hooks/useRatings";
 import { useAuth } from "@/context/AuthContext";
 import EditProfileModal from "@/components/EditProfileModal";
 import { toast } from "@/hooks/use-toast";
@@ -21,7 +21,7 @@ export default function Profile() {
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
-  const { data: ratings } = useRatings(profileUser?.id ?? "");
+  const { data: ratings } = useUserRatings(profileUser?.id ?? "");
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   useEffect(() => {

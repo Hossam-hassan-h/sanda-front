@@ -74,8 +74,17 @@ export interface User {
   city?: string;
   createdAt: string;
   updatedAt?: string;
+  /** Backend mapped fields */
+  is_verified?: boolean;
+  verification_status?: VerificationStatus;
   /** Verification request submitted by the user (documents + review state) */
   verificationRequest?: VerificationRequest;
+  /** Documents uploaded by the user */
+  nationalId?: {
+    front?: { url?: string; publicId?: string };
+    back?: { url?: string; publicId?: string };
+  };
+  profile_image?: { url?: string; publicId?: string };
 }
 
 export type JobStatus = "open" | "in-progress" | "completed" | "cancelled";

@@ -16,7 +16,7 @@ export const useCreateRating = () => {
   return useMutation({
     mutationFn: (payload: CreateRatingPayload) => ratingsApi.create(payload),
     onSuccess: (_, variables) => {
-      qc.invalidateQueries({ queryKey: ["ratings", "user", variables.reviewedUserId] });
+      qc.invalidateQueries({ queryKey: ["ratings"] });
       qc.invalidateQueries({ queryKey: ["jobs"] });
       qc.invalidateQueries({ queryKey: ["users"] });
     },

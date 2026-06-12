@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import RatingStars from "@/components/RatingStars";
+import ReportForm from "@/components/ReportForm";
 import { authApi } from "@/api/auth";
 import { useJobs } from "@/hooks/useJobs";
 import { useUserRatings } from "@/hooks/useRatings";
@@ -95,10 +96,13 @@ export default function EmployerProfile() {
                 )}
               </div>
             </div>
-            <Button onClick={() => navigate("/chat")} className="gap-1.5 py-5 font-bold">
-              <MessageSquare className="w-4 h-4" />
-              مراسلة
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => navigate("/chat")} className="gap-1.5 py-5 font-bold flex-1">
+                <MessageSquare className="w-4 h-4" />
+                مراسلة
+              </Button>
+              <ReportForm reportedUserId={user.id} reportedUserName={user.name} />
+            </div>
           </div>
 
           {user.bio && (

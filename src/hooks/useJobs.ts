@@ -14,9 +14,6 @@ export const useMyJobs = () =>
 export const useApplicants = (jobId: string) =>
   useQuery({ queryKey: ["applicants", jobId], queryFn: () => jobsApi.applicants(jobId), enabled: !!jobId });
 
-export const useRatings = (userId: string) =>
-  useQuery({ queryKey: ["ratings", userId], queryFn: () => jobsApi.ratings(userId), enabled: !!userId });
-
 export const useCreateJob = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -49,7 +46,10 @@ export const useApplyToJob = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ jobId, message }: { jobId: string; message: string }) => jobsApi.apply(jobId, message),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["jobs"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["my-applications"] });
+    },
   });
 };
 

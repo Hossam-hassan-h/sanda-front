@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, Clock, CheckCircle, XCircle, User } from "lucide-react";
+import { ArrowLeft, Camera, Clock, CheckCircle, XCircle, User, QrCode } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,10 +10,11 @@ import { useJob } from "@/hooks/useJobs";
 import { useAuth } from "@/context/AuthContext";
 import QRGenerator from "@/components/QRGenerator";
 import QRScanner from "@/components/QRScanner";
-import { useJobAssignments } from "@/hooks/useJobAssignments";
+import { useJobAssignments, useMyAssignments } from "@/hooks/useJobAssignments";
 import { cn } from "@/lib/utils";
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  assigned: { label: "لم يبدأ", color: "bg-gray-100 text-gray-700 border-gray-200", icon: <Clock className="w-3.5 h-3.5" /> },
   "checked-in": { label: "حاضر", color: "bg-blue-100 text-blue-700 border-blue-200", icon: <Clock className="w-3.5 h-3.5" /> },
   "checked-out": { label: "منتهي", color: "bg-green-100 text-green-700 border-green-200", icon: <CheckCircle className="w-3.5 h-3.5" /> },
   "no-show": { label: "لم يحضر", color: "bg-red-100 text-red-700 border-red-200", icon: <XCircle className="w-3.5 h-3.5" /> },
@@ -24,19 +25,23 @@ export default function ActiveJob() {
   const navigate = useNavigate();
   const { data: job, isLoading } = useJob(id!);
   const { user } = useAuth();
-  
-  // حالة للتحكم في ظهور الكاميرا للعامل
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-  // جلب سجل الحضور لهذه الوظيفة
-  const { data: assignments, isLoading: assignmentsLoading } = useJobAssignments(id || "");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const isEmployer = user?.role === "employer";
   const isWorker = user?.role === "worker";
+
+  // Fetch assignments according to role — employer uses job-scoped, worker uses own
+  const { data: employerAssignments, isLoading: employerLoading } = useJobAssignments(isEmployer ? (id || "") : "");
+  const { data: workerAssignments, isLoading: workerLoading } = useMyAssignments();
+
+  const assignments = isEmployer ? employerAssignments : workerAssignments;
+  const assignmentsLoading = isEmployer ? employerLoading : workerLoading;
+
   const workerAssignment = useMemo(() => {
     if (!assignments || !user) return undefined;
-    return assignments.find((a) => a.workerId === user.id);
-  }, [assignments, user]);
+    return assignments.find((a) => a.workerId === user.id || a.jobId === id);
+  }, [assignments, user, id]);
 
   const backUrl = isEmployer ? "/my-jobs" : "/my-jobs-active";
 
@@ -61,6 +66,8 @@ export default function ActiveJob() {
     );
   }
 
+  const isDone = workerAssignment?.status === "checked-out" || workerAssignment?.status === "completed";
+
   return (
     <UserLayout>
       <div className="container mx-auto px-4 md:px-6 py-10 max-w-3xl">
@@ -76,31 +83,40 @@ export default function ActiveJob() {
         <Badge className="bg-warning/10 text-warning border-warning/20 mb-3">قيد التنفيذ</Badge>
         <h1 className="font-heading font-extrabold text-2xl md:text-3xl mb-2">{job.title}</h1>
         <p className="text-muted-foreground mb-8">
-          {isEmployer 
-            ? "اعرض QR Code للعامل ليسجل الحضور والانصراف" 
-            : "امسح QR Code الخاص بصاحب العمل لتسجيل حضورك"}
+          {isEmployer
+            ? "أنشئ QR Code لكل عامل لتسجيل الحضور والانصراف"
+            : "امسح QR Code الخاص بصاحب العمل"}
         </p>
 
-        {/* لوحة QR — تختلف حسب نوع المستخدم */}
+        {/* Employer: QR generator per assignment */}
         {isEmployer ? (
-          <QRGenerator
-            jobId={job.id}
-            jobTitle={job.title}
-            jobStatus={job.status}
-          />
+          <div className="space-y-4">
+            {assignmentsLoading ? (
+              <Skeleton className="h-20 rounded-xl" />
+            ) : assignments && assignments.length > 0 ? (
+              assignments.map((assignment) => (
+                <QRGenerator
+                  key={assignment.id}
+                  assignmentId={assignment.id}
+                  assignmentStatus={assignment.status}
+                  workerName={assignment.worker?.name}
+                />
+              ))
+            ) : (
+              <p className="text-muted-foreground text-center py-8">لا يوجد عمال مقبولين حتى الآن</p>
+            )}
+          </div>
         ) : (
+          /* Worker: scanner */
           <div className="bg-card border border-border rounded-2xl p-8 md:p-12 text-center">
-            {workerAssignment?.status === "checked-in" || workerAssignment?.status === "checked-out" ? (
-              // حالة بعد تسجيل الحضور — يعرض التايم والانصراف
+            {isDone ? (
               <div className="space-y-6">
                 <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center">
                   <CheckCircle className="h-10 w-10 text-green-600" />
                 </div>
-                <h2 className="font-heading font-bold text-xl">
-                  {workerAssignment.status === "checked-out" ? "تم تسجيل الانصراف" : "تم تسجيل الحضور"}
-                </h2>
+                <h2 className="font-heading font-bold text-xl">تم الانتهاء</h2>
                 <div className="bg-muted rounded-xl p-4 space-y-2 text-sm">
-                  {workerAssignment.checkInTime && (
+                  {workerAssignment?.checkInTime && (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">تسجيل الحضور</span>
                       <span dir="ltr" className="font-medium">
@@ -108,7 +124,7 @@ export default function ActiveJob() {
                       </span>
                     </div>
                   )}
-                  {workerAssignment.checkOutTime && (
+                  {workerAssignment?.checkOutTime && (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">تسجيل الانصراف</span>
                       <span dir="ltr" className="font-medium">
@@ -117,22 +133,35 @@ export default function ActiveJob() {
                     </div>
                   )}
                 </div>
-                {workerAssignment.status === "checked-in" && (
-                  <p className="text-sm text-muted-foreground">
-                    لا تنسَ تسجيل الانصراف بعد انتهاء العمل
-                  </p>
+              </div>
+            ) : workerAssignment?.status === "checked-in" ? (
+              <div className="space-y-6">
+                <div className="w-20 h-20 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
+                  <Clock className="h-10 w-10 text-blue-600" />
+                </div>
+                <h2 className="font-heading font-bold text-xl">تم تسجيل الحضور</h2>
+                {workerAssignment.checkInTime && (
+                  <div className="bg-muted rounded-xl p-4 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">وقت الحضور</span>
+                      <span dir="ltr" className="font-medium">
+                        {new Date(workerAssignment.checkInTime).toLocaleTimeString("ar-EG")}
+                      </span>
+                    </div>
+                  </div>
                 )}
+                <p className="text-sm text-muted-foreground">
+                  لا تنسَ تسجيل الانصراف بعد انتهاء العمل بمسح QR الانصراف
+                </p>
               </div>
             ) : isScannerOpen ? (
-              // فتح الكاميرا للمسح
               <div className="space-y-4">
-                <QRScanner jobId={job.id} />
+                <QRScanner onScanComplete={() => setIsScannerOpen(false)} />
                 <Button variant="ghost" onClick={() => setIsScannerOpen(false)}>
                   إلغاء
                 </Button>
               </div>
             ) : (
-              // العرض الافتراضي — زر فتح الكاميرا
               <>
                 <div className="mx-auto w-32 h-32 rounded-full bg-primary-soft flex items-center justify-center mb-6">
                   <Camera className="h-16 w-16 text-primary" />
@@ -149,7 +178,7 @@ export default function ActiveJob() {
           </div>
         )}
 
-        {/* سجل الحضور — الكل يشوفه */}
+        {/* Attendance log — everyone sees */}
         <div className="mt-6">
           <h3 className="font-heading font-bold mb-3 text-lg">سجل الحضور</h3>
           {assignmentsLoading ? (
@@ -159,7 +188,7 @@ export default function ActiveJob() {
           ) : assignments && assignments.length > 0 ? (
             <div className="space-y-2">
               {assignments.map((assignment) => {
-                const config = statusConfig[assignment.status] || statusConfig["checked-in"];
+                const config = statusConfig[assignment.status] || statusConfig.assigned;
                 return (
                   <Card key={assignment.id}>
                     <CardContent className="p-4">

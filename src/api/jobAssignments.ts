@@ -13,13 +13,13 @@ const mapAssignment = (raw: Record<string, unknown>): JobAssignment => {
     cancelled: "no-show",
   };
   return {
-    id: raw.id as string,
-    jobId: job?.id as string ?? (raw.jobId as string) ?? "",
-    job: job ? { id: job.id as string, title: job.title as string, city: (job.location as string) ?? (job.city as string) ?? "", price: (job.salary as number) ?? (job.price as number) ?? 0 } : (raw.job as unknown as JobAssignment["job"]),
-    workerId: worker?.id as string ?? (raw.workerId as string) ?? "",
-    worker: worker ? { id: worker.id as string, name: worker.name as string, avatar: ((worker.profileImage as Record<string, unknown>)?.url as string) ?? (worker.avatar as string), rating: worker.rating as number } : (raw.worker as UserSummary),
-    checkInTime: (raw.checkedInAt as string) ?? (raw.startedAt as string) ?? raw.checkInTime as string,
-    checkOutTime: (raw.checkedOutAt as string) ?? (raw.completedAt as string) ?? raw.checkOutTime as string,
+    id: raw.id as string ?? raw._id as string,
+    jobId: job?._id as string ?? job?.id as string ?? (raw.jobId as string) ?? "",
+    job: job ? { id: job._id as string ?? job.id as string, title: job.title as string, city: (job.location as string) ?? (job.city as string) ?? "", price: (job.salary as number) ?? (job.price as number) ?? 0, status: job.status as string } : (raw.job as unknown as JobAssignment["job"]),
+    workerId: typeof worker === "string" ? worker : (worker?._id as string ?? worker?.id as string ?? (raw.workerId as string) ?? ""),
+    worker: worker ? (typeof worker === "object" ? { id: worker._id as string ?? worker.id as string, name: worker.name as string, avatar: worker.avatar as string ?? ((worker.profileImage as Record<string, unknown>)?.url as string) ?? (worker.profile_image as Record<string, unknown>)?.url as string, rating: worker.rating as number } : undefined) : (raw.worker as UserSummary),
+    checkInTime: (raw.checked_in_at as string) ?? (raw.checkedInAt as string) ?? (raw.startedAt as string) ?? raw.checkInTime as string,
+    checkOutTime: (raw.checked_out_at as string) ?? (raw.checkedOutAt as string) ?? (raw.completedAt as string) ?? raw.checkOutTime as string,
     status: statusMap[raw.status as string] ?? (raw.status as JobAssignment["status"]),
     createdAt: raw.createdAt as string ?? raw.created_at as string,
   };
@@ -111,42 +111,45 @@ export const jobAssignmentsApi = {
     }
   },
 
-  /** Generate QR code for a job (employer) — uses mock since backend needs assignment ID */
-  async generateQR(jobId: string): Promise<{ qrCode: string; qrData: string }> {
-    const qrData = JSON.stringify({ jobId, timestamp: Date.now(), secret: "sanda-secret" });
-    return mockDelay({ qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`, qrData });
+  /** Generate check-in QR token for an assignment (employer) */
+  async generateCheckInQR(assignmentId: string): Promise<{ qrToken: string; type: string; expiresAt: string }> {
+    if (USE_MOCKS) {
+      const qrData = JSON.stringify({ assignmentId, type: "check_in", timestamp: Date.now(), secret: "sanda-secret" });
+      return mockDelay({ qrToken: btoa(qrData), type: "check_in", expiresAt: new Date(Date.now() + 300000).toISOString() });
+    }
+    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-in-qr`);
+    return body as { qrToken: string; type: string; expiresAt: string };
   },
 
-  /** Check-in by scanning QR code (worker) — uses mock, backend endpoint diverges */
-  async checkIn(jobId: string, qrCode: string): Promise<JobAssignment> {
-    const userId = this.getCurrentUserId();
-    const workerName = (() => {
-      try {
-        const stored = localStorage.getItem("sanda_user");
-        if (stored) {
-          const user = JSON.parse(stored);
-          return user.name || "أحمد المصري";
-        }
-      } catch {
-        // Ignore parse errors
-      }
-      return "أحمد المصري";
-    })();
-    const assignment: JobAssignment = {
-      id: "ja-" + Date.now(),
-      jobId,
-      job: { id: jobId, title: "وظيفة جديدة", city: "القاهرة", price: 0 },
-      workerId: userId,
-      worker: { id: userId, name: workerName, avatar: "https://i.pravatar.cc/150?img=12", rating: 4.8 },
-      checkInTime: new Date().toISOString(),
-      status: "checked-in",
-      createdAt: new Date().toISOString(),
-    };
-    mockAssignments.push(assignment);
-    return mockDelay(assignment, 800);
+  /** Generate check-out QR token for an assignment (employer) */
+  async generateCheckOutQR(assignmentId: string): Promise<{ qrToken: string; type: string; expiresAt: string }> {
+    if (USE_MOCKS) {
+      const qrData = JSON.stringify({ assignmentId, type: "check_out", timestamp: Date.now(), secret: "sanda-secret" });
+      return mockDelay({ qrToken: btoa(qrData), type: "check_out", expiresAt: new Date(Date.now() + 300000).toISOString() });
+    }
+    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-out-qr`);
+    return body as { qrToken: string; type: string; expiresAt: string };
   },
 
-  /** Complete assignment (employer) */
+  /** Check-in by scanning QR token (worker) */
+  async checkInWithQR(assignmentId: string, qrToken: string): Promise<JobAssignment> {
+    if (USE_MOCKS) {
+      return mockDelay(mockAssignments[0]);
+    }
+    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-in`, { qrToken });
+    return mapAssignment(body as Record<string, unknown>);
+  },
+
+  /** Check-out by scanning QR token (worker) */
+  async checkOutWithQR(assignmentId: string, qrToken: string): Promise<JobAssignment> {
+    if (USE_MOCKS) {
+      return mockDelay(mockAssignments[0]);
+    }
+    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-out`, { qrToken });
+    return mapAssignment(body as Record<string, unknown>);
+  },
+
+  /** Complete assignment (employer) — manual check-out */
   async checkOut(assignmentId: string): Promise<JobAssignment> {
     if (USE_MOCKS) {
       const assignment = mockAssignments.find((a) => a.id === assignmentId);

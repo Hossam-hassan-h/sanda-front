@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { Calendar, Clock, CheckCircle, XCircle, AlertTriangle, User, ArrowLeft } from "lucide-react";
+import { Calendar, Clock, CheckCircle, XCircle, AlertTriangle, User, ArrowLeft, QrCode } from "lucide-react";
 import { useJob } from "@/hooks/useJobs";
 import {
   useJobAssignments,
@@ -108,6 +108,11 @@ export default function JobAssignmentsPage() {
 
   const { data: job } = useJob(jobId || "");
   const { data: assignments, isLoading } = useJobAssignments(jobId || "");
+  const [qrAssignmentId, setQrAssignmentId] = useState<string | null>(null);
+
+  const assignedWorkers = useMemo(() => {
+    return (assignments ?? []).filter((a) => a.status === "assigned" || a.status === "checked-in");
+  }, [assignments]);
 
   if (!user || (user.role !== "employer" && user.role !== "admin")) {
     return (
@@ -225,13 +230,34 @@ export default function JobAssignmentsPage() {
           </Tabs>
         </TabsContent>
 
-        {/* QR Tab */}
+        {/* QR Tab — لكل عامل على حدة */}
         <TabsContent value="qr">
-          <QRGenerator
-            jobId={jobId}
-            jobTitle={job?.title || ""}
-            jobStatus={job?.status || ""}
-          />
+          <div className="space-y-3">
+            <div className="flex gap-2 mb-4">
+              {assignedWorkers.map((a) => (
+                <Button
+                  key={a.id}
+                  size="sm"
+                  variant={qrAssignmentId === a.id ? "default" : "outline"}
+                  onClick={() => setQrAssignmentId(a.id)}
+                >
+                  <QrCode className="w-4 h-4 ml-1" />
+                  {a.worker?.name || "عامل"}
+                </Button>
+              ))}
+            </div>
+            {qrAssignmentId ? (
+              <QRGenerator
+                assignmentId={qrAssignmentId}
+                assignmentStatus={assignments?.find((a) => a.id === qrAssignmentId)?.status}
+                workerName={assignments?.find((a) => a.id === qrAssignmentId)?.worker?.name}
+              />
+            ) : (
+              <p className="text-center text-muted-foreground py-8">
+                اختر عاملاً من الأعلى لإنشاء QR Code له
+              </p>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

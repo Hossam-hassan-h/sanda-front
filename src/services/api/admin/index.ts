@@ -8,7 +8,7 @@ import type {
   PaginatedResponse,
   ChatDetail,
 } from "./admin-types";
-import type { Conversation } from "@/api/types";
+import type { Conversation, Report } from "@/api/types";
 
 import {
   fetchUsers,
@@ -34,7 +34,12 @@ import { fetchDashboardStats } from "./endpoints/dashboard";
 import { fetchChats, fetchChatById } from "./endpoints/chat";
 
 import {
-  mockReportsHandlers,
+  fetchReports,
+  fetchReportById,
+  updateReportStatus,
+  deleteReport,
+} from "./endpoints/reports";
+import {
   mockWalletHandlers,
   richMockReports,
   richMockTransactions,
@@ -109,10 +114,10 @@ export const jobsApi: AdminJobsApi = {
 };
 
 export const reportsApi: AdminReportsApi = {
-  getAll: (params?) => mockReportsHandlers.getAll(params),
-  getById: (id) => mockReportsHandlers.getById(id),
-  updateStatus: (id, status) => mockReportsHandlers.updateStatus(id, status),
-  delete: (id) => mockReportsHandlers.delete(id),
+  getAll: (params?) => fetchReports(params) as Promise<PaginatedResponse<Report>>,
+  getById: (id) => fetchReportById(id) as Promise<Report>,
+  updateStatus: (id, status) => updateReportStatus(id, status) as Promise<{ ok: true }>,
+  delete: (id) => deleteReport(id) as Promise<{ ok: true }>,
 };
 
 export const walletApi: AdminWalletApi = {

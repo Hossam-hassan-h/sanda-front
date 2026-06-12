@@ -22,6 +22,8 @@ const Applicants = lazy(() => import("./pages/jobs/Applicants"));
 const ActiveJob = lazy(() => import("./pages/jobs/ActiveJob"));
 const JobAssignments = lazy(() => import("./pages/jobs/JobAssignments"));
 const WorkerJobs = lazy(() => import("./pages/worker/WorkerJobs"));
+const RateWorker = lazy(() => import("./pages/jobs/RateWorker"));
+const RateEmployer = lazy(() => import("./pages/jobs/RateEmployer"));
 const Wallet = lazy(() => import("./pages/wallet/Wallet"));
 const Chat = lazy(() => import("./pages/chat/Chat"));
 const Profile = lazy(() => import("./pages/profile/Profile"));
@@ -113,6 +115,8 @@ const App = () => (
             <Route path="/jobs/:id/applicants" element={<ProtectedRoute roles={["employer"]}><Applicants /></ProtectedRoute>} />
             <Route path="/jobs/:id/active" element={<ProtectedRoute roles={["worker", "employer"]}><ActiveJob /></ProtectedRoute>} />
             <Route path="/jobs/:id/assignments" element={<ProtectedRoute roles={["employer"]}><JobAssignments /></ProtectedRoute>} />
+            <Route path="/jobs/:id/rate-worker" element={<ProtectedRoute roles={["employer"]}><RateWorker /></ProtectedRoute>} />
+            <Route path="/jobs/:id/rate-employer" element={<ProtectedRoute roles={["worker"]}><RateEmployer /></ProtectedRoute>} />
             <Route path="/my-jobs" element={<ProtectedRoute roles={["employer"]}><MyJobs /></ProtectedRoute>} />
             <Route path="/my-jobs-active" element={<ProtectedRoute roles={["worker"]}><WorkerJobs /></ProtectedRoute>} />
 

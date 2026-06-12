@@ -48,15 +48,15 @@ const mapApplication = (raw: Record<string, unknown>): Application => {
     id: raw.id as string,
     jobId: job?.id as string ?? (raw.jobId as string) ?? "",
     job: job ? { id: job.id as string, title: job.title as string, city: job.city as string ?? "", price: (job.salary as number) ?? (job.price as number) ?? 0 } : undefined,
-    workerId: worker?.id as string ?? (raw.workerId as string) ?? "",
-    worker: worker ? {
+    workerId: typeof worker === "string" ? worker : (worker?.id as string ?? (raw.workerId as string) ?? ""),
+    worker: worker ? (typeof worker === "object" ? {
       id: worker.id as string,
       name: worker.name as string,
       avatar: worker.avatar as string,
       rating: worker.rating as number,
       ratingsCount: worker.ratingsCount as number,
       city: worker.city as string,
-    } : (raw.worker as unknown as UserSummary) ?? { id: "", name: "" },
+    } : { id: worker as string, name: "" }) : (raw.worker as unknown as UserSummary) ?? { id: "", name: "" },
     message: raw.message as string,
     status: raw.status as Application["status"],
     createdAt: raw.createdAt as string ?? raw.created_at as string,

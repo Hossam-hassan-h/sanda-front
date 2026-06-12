@@ -20,7 +20,7 @@ export default function RatingForm({
   jobId,
   onSuccess,
 }: RatingFormProps) {
-  const [rating, setRating] = useState<number>(5);
+  const [rating, setRating] = useState<number>(0);
   const [comment, setComment] = useState<string>("");
   const createRating = useCreateRating();
 

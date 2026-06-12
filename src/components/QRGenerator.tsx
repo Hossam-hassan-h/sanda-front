@@ -1,33 +1,33 @@
-import { useState, useEffect } from "react";
-import { QrCode, RefreshCw, CheckCircle, Download, AlertTriangle } from "lucide-react";
-import { useGenerateQR } from "@/hooks/useJobAssignments";
+import { useState } from "react";
+import { RefreshCw, CheckCircle, Download, AlertTriangle, Clock, LogOut } from "lucide-react";
+import { useGenerateCheckInQR, useGenerateCheckOutQR } from "@/hooks/useJobAssignments";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
 
 interface QRGeneratorProps {
-  jobId: string;
-  jobTitle: string;
-  jobStatus: string;
+  assignmentId: string;
+  assignmentStatus?: string;
+  workerName?: string;
 }
 
-export default function QRGenerator({ jobId, jobTitle, jobStatus }: QRGeneratorProps) {
+export default function QRGenerator({ assignmentId, assignmentStatus, workerName }: QRGeneratorProps) {
   const [qrImage, setQrImage] = useState<string>("");
-  const generateQR = useGenerateQR();
+  const [qrType, setQrType] = useState<"check_in" | "check_out">("check_in");
+  const generateCheckInQR = useGenerateCheckInQR();
+  const generateCheckOutQR = useGenerateCheckOutQR();
+  const isPending = generateCheckInQR.isPending || generateCheckOutQR.isPending;
 
-  // Auto-generate QR on mount if job is in-progress
-  useEffect(() => {
-    if (jobStatus === "in-progress" && !qrImage) {
-      handleGenerate();
-    }
-  }, [jobStatus]);
-
-  const handleGenerate = async () => {
+  const handleGenerate = async (type: "check_in" | "check_out") => {
     try {
-      const result = await generateQR.mutateAsync({ jobId });
-      setQrImage(result.qrCode);
-    } catch {
-      // silent
+      const fn = type === "check_in" ? generateCheckInQR : generateCheckOutQR;
+      const result = await fn.mutateAsync(assignmentId);
+      setQrType(type);
+      const qrPayload = JSON.stringify({ assignmentId, qrToken: result.qrToken, type });
+      setQrImage(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}`);
+    } catch (err) {
+      toast({ title: "فشل إنشاء QR", description: err instanceof Error ? err.message : "حاول مرة أخرى", variant: "destructive" });
     }
   };
 
@@ -35,71 +35,72 @@ export default function QRGenerator({ jobId, jobTitle, jobStatus }: QRGeneratorP
     if (!qrImage) return;
     const link = document.createElement("a");
     link.href = qrImage;
-    link.download = `sanda-qr-${jobId}.png`;
+    link.download = `sanda-qr-${assignmentId}-${qrType}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  if (jobStatus !== "in-progress") {
+  const hasCheckedIn = assignmentStatus === "checked-in" || assignmentStatus === "checked-out";
+  const hasCheckedOut = assignmentStatus === "checked-out";
+
+  if (hasCheckedOut) {
     return (
-      <Card className="border-dashed bg-muted/30">
-        <CardContent className="py-6 text-center">
-          <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            QR Code بيظهر لما تبدأ الوظيفة
-          </p>
+      <Card className="border-green-200 bg-green-50/50">
+        <CardContent className="py-4 text-center">
+          <CheckCircle className="w-6 h-6 mx-auto mb-1 text-green-600" />
+          <p className="text-sm font-medium text-green-700">تم الانصراف</p>
+          {workerName && <p className="text-xs text-muted-foreground mt-1">{workerName}</p>}
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-8 md:p-10 text-center">
-      <h2 className="font-heading font-bold text-xl mb-1">QR Code الحضور</h2>
-      <p className="text-sm text-muted-foreground mb-6">
-        اعرض الكود للعامل يمسحه لتسجيل الحضور والانصراف
-      </p>
-
-      {generateQR.isPending ? (
-        <div className="w-48 h-48 mx-auto bg-muted rounded-xl flex items-center justify-center animate-pulse">
-          <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin" />
+    <Card className="border-dashed bg-muted/30">
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-medium">{workerName && `${workerName} — `}توليد QR</div>
         </div>
-      ) : qrImage ? (
-        <div className="space-y-4">
-          <div className="relative inline-block">
-            <img
-              src={qrImage}
-              alt="QR Code"
-              className="w-48 h-48 rounded-xl border-2 border-primary/20"
-            />
-            <Badge className="absolute -top-2 -right-2 bg-green-500 text-white">
-              <CheckCircle className="w-3 h-3 mr-1" />
-              نشط
-            </Badge>
-          </div>
 
-          <div className="bg-muted/50 rounded-lg p-3 text-sm">
-            <p className="font-medium">{jobTitle}</p>
+        {qrImage ? (
+          <div className="space-y-3">
+            <div className="relative inline-block mx-auto">
+              <img
+                src={qrImage}
+                alt="QR Code"
+                className="w-36 h-36 rounded-xl border-2 border-primary/20"
+              />
+              <Badge className={`absolute -top-2 -right-2 ${qrType === "check_in" ? "bg-blue-500" : "bg-amber-500"} text-white`}>
+                {qrType === "check_in" ? "حضور" : "انصراف"}
+              </Badge>
+            </div>
+            <div className="flex gap-2 justify-center">
+              <Button size="sm" variant="outline" onClick={handleDownload}>
+                <Download className="w-4 h-4" />
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleGenerate(qrType)}>
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
-
+        ) : (
           <div className="flex gap-2 justify-center">
-            <Button size="sm" variant="outline" onClick={handleDownload}>
-              <Download className="w-4 h-4 mr-1" />
-              تحميل
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleGenerate}>
-              <RefreshCw className="w-4 h-4 mr-1" />
-              تجديد
-            </Button>
+            {!hasCheckedIn && (
+              <Button size="sm" variant="outline" onClick={() => handleGenerate("check_in")} disabled={isPending}>
+                <Clock className="w-4 h-4 ml-1" />
+                QR حضور
+              </Button>
+            )}
+            {hasCheckedIn && (
+              <Button size="sm" variant="default" onClick={() => handleGenerate("check_out")} disabled={isPending}>
+                <LogOut className="w-4 h-4 ml-1" />
+                QR انصراف
+              </Button>
+            )}
           </div>
-        </div>
-      ) : (
-        <Button onClick={handleGenerate} disabled={generateQR.isPending}>
-          <QrCode className="w-4 h-4 mr-2" />
-          توليد QR Code
-        </Button>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import RatingStars from "@/components/RatingStars";
+import ReportForm from "@/components/ReportForm";
 import { authApi } from "@/api/auth";
 import { useUserRatings } from "@/hooks/useRatings";
 import type { User } from "@/api/types";
@@ -96,10 +97,13 @@ export default function WorkerProfile() {
                 )}
               </div>
             </div>
-            <Button onClick={handleMessage} className="gap-1.5 py-5 font-bold">
-              <MessageSquare className="w-4 h-4" />
-              مراسلة وتوظيف
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleMessage} className="gap-1.5 py-5 font-bold flex-1">
+                <MessageSquare className="w-4 h-4" />
+                مراسلة وتوظيف
+              </Button>
+              <ReportForm reportedUserId={user.id} reportedUserName={user.name} />
+            </div>
           </div>
 
           {user.bio && (

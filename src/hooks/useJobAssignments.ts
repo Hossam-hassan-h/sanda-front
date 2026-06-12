@@ -24,18 +24,24 @@ export const useAssignment = (id: string) =>
     enabled: !!id,
   });
 
-/** Generate QR code for a job */
-export const useGenerateQR = () =>
+/** Generate check-in QR token for an assignment */
+export const useGenerateCheckInQR = () =>
   useMutation({
-    mutationFn: ({ jobId }: { jobId: string }) => jobAssignmentsApi.generateQR(jobId),
+    mutationFn: (assignmentId: string) => jobAssignmentsApi.generateCheckInQR(assignmentId),
   });
 
-/** Check-in by scanning QR */
-export const useCheckIn = () => {
+/** Generate check-out QR token for an assignment */
+export const useGenerateCheckOutQR = () =>
+  useMutation({
+    mutationFn: (assignmentId: string) => jobAssignmentsApi.generateCheckOutQR(assignmentId),
+  });
+
+/** Check-in by scanning QR token */
+export const useCheckInWithQR = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ jobId, qrCode }: { jobId: string; qrCode: string }) =>
-      jobAssignmentsApi.checkIn(jobId, qrCode),
+    mutationFn: ({ assignmentId, qrToken }: { assignmentId: string; qrToken: string }) =>
+      jobAssignmentsApi.checkInWithQR(assignmentId, qrToken),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["assignments"] });
       qc.invalidateQueries({ queryKey: ["jobs"] });
@@ -43,7 +49,21 @@ export const useCheckIn = () => {
   });
 };
 
-/** Check-out */
+/** Check-out by scanning QR token */
+export const useCheckOutWithQR = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ assignmentId, qrToken }: { assignmentId: string; qrToken: string }) =>
+      jobAssignmentsApi.checkOutWithQR(assignmentId, qrToken),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assignments"] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["wallet"] });
+    },
+  });
+};
+
+/** Check-out (manual — employer marks complete) */
 export const useCheckOut = () => {
   const qc = useQueryClient();
   return useMutation({

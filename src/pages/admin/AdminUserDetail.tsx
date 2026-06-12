@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -25,7 +25,6 @@ import {
 import AdminLayout from "@/layouts/AdminLayout";
 import { useUserQuery, useVerifyUser, useUnverifyUser, useUpdateUser, useDeleteUser } from "@/hooks/useAdminQueries";
 import { useJobs } from "@/hooks/useJobs";
-import { useAuth } from "@/context/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { ErrorState } from "@/components/admin/ErrorState";
 import { Button } from "@/components/ui/button";
@@ -53,8 +52,6 @@ const roleColor: Record<string, string> = {
   admin: "bg-red-100 text-red-700 border-red-200",
 };
 
-const VERIFICATION_REQUESTS_KEY = "sanda_verification_requests";
-
 function UserSkeleton() {
   return (
     <div className="space-y-6">
@@ -71,7 +68,7 @@ function UserSkeleton() {
   );
 }
 
-const DOC_LABELS: Record<VerificationDocument["type"], string> = {
+const DOC_LABELS: Record<string, string> = {
   national_id_front: "بطاقة الرقم القومي (أمام)",
   national_id_back: "بطاقة الرقم القومي (خلف)",
   personal_photo: "صورة شخصية",
@@ -144,7 +141,6 @@ function DocumentPreviewDialog({
 export default function AdminUserDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user: currentAdmin } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: user, isLoading, isError, refetch } = useUserQuery(id ?? null);
@@ -161,44 +157,10 @@ export default function AdminUserDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  // Persist the admin's review decision
-  const persistReview = (decision: "approved" | "rejected", reason?: string) => {
-    if (!user) return;
-    const now = new Date().toISOString();
-    const map: Record<string, unknown> = (() => {
-      try { const stored = localStorage.getItem(VERIFICATION_REQUESTS_KEY); return stored ? JSON.parse(stored) : {}; }
-      catch { return {}; }
-    })();
-
-    const existing = (map[user.id] as { documents?: VerificationDocument[]; submittedAt?: string } | undefined) ?? {};
-    const documents: VerificationDocument[] = existing.documents ?? user.verificationRequest?.documents ?? [];
-    const submittedAt = existing.submittedAt ?? user.verificationRequest?.submittedAt ?? now;
-
-    const reviewed = {
-      status: decision,
-      documents,
-      submittedAt,
-      reviewedAt: now,
-      reviewedBy: currentAdmin?.id,
-      rejectionReason: decision === "rejected" ? reason : undefined,
-    };
-    map[user.id] = reviewed;
-    localStorage.setItem(VERIFICATION_REQUESTS_KEY, JSON.stringify(map));
-
-    try {
-      const stored = localStorage.getItem("sanda_user");
-      if (stored) {
-        const u = JSON.parse(stored);
-        if (u.id === user.id) { u.verificationRequest = reviewed; localStorage.setItem("sanda_user", JSON.stringify(u)); }
-      }
-    } catch { /* ignore */ }
-  };
-
   const handleApprove = async () => {
     if (!user) return;
     setReviewing("approve");
     try {
-      persistReview("approved");
       await verifyUser.mutateAsync(user.id);
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       toast({ title: "تم قبول التوثيق", description: `تم توثيق حساب ${user.name} بنجاح` });
@@ -215,8 +177,7 @@ export default function AdminUserDetail() {
     }
     setReviewing("reject");
     try {
-      persistReview("rejected", rejectionReason.trim());
-      if (user.isVerified) await unverifyUser.mutateAsync(user.id);
+      await unverifyUser.mutateAsync(user.id);
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
       toast({ title: "تم رفض التوثيق", description: `تم رفض طلب ${user.name}` });
       setRejectionReason("");
@@ -271,21 +232,21 @@ export default function AdminUserDetail() {
     );
   }
 
-  const localRequest: { status: string; documents?: VerificationDocument[]; submittedAt?: string; rejectionReason?: string; reviewedAt?: string } | undefined = (() => {
-    try { const stored = localStorage.getItem(VERIFICATION_REQUESTS_KEY); const map = stored ? JSON.parse(stored) : {}; return map[user.id]; }
-    catch { return undefined; }
-  })();
-
-  const verificationRequest = (user as { verificationRequest?: { status: string; documents: VerificationDocument[]; submittedAt: string; rejectionReason?: string; reviewedAt?: string } })
-    .verificationRequest ?? (localRequest ? {
-      status: localRequest.status,
-      documents: localRequest.documents ?? [],
-      submittedAt: localRequest.submittedAt ?? "",
-      rejectionReason: localRequest.rejectionReason,
-      reviewedAt: localRequest.reviewedAt,
-    } : undefined);
-
-  const isPending = verificationRequest?.status === "pending" && !user.isVerified;
+  const verificationStatus = user.verification_status ?? (user.isVerified ? "approved" : "none");
+  const documents: VerificationDocument[] = [];
+  if (user.nationalId?.front?.url) {
+    documents.push({ id: "national_id_front", type: "national_id_front", name: "بطاقة الرقم القومي (أمام)", url: user.nationalId.front.url, size: 0, uploadedAt: user.createdAt });
+  }
+  if (user.nationalId?.back?.url) {
+    documents.push({ id: "national_id_back", type: "national_id_back", name: "بطاقة الرقم القومي (خلف)", url: user.nationalId.back.url, size: 0, uploadedAt: user.createdAt });
+  }
+  if (user.profile_image?.url) {
+    documents.push({ id: "personal_photo", type: "personal_photo", name: "صورة شخصية", url: user.profile_image.url, size: 0, uploadedAt: user.createdAt });
+  }
+  const verificationRequest = verificationStatus !== "none" || documents.length > 0
+    ? { status: verificationStatus, documents, submittedAt: user.createdAt }
+    : undefined;
+  const isPending = verificationStatus === "pending";
 
   const statusBadge = user.isActive === false ? (
     <Badge variant="destructive">محظور</Badge>
@@ -477,20 +438,7 @@ export default function AdminUserDetail() {
                   )}
                   {verificationRequest.status !== "pending" && (
                     <div className="border-t border-border pt-4">
-                      <Button variant="outline" size="sm" onClick={() => {
-                        if (!user) return;
-                        const map: Record<string, unknown> = (() => { try { const stored = localStorage.getItem(VERIFICATION_REQUESTS_KEY); return stored ? JSON.parse(stored) : {}; } catch { return {}; } })();
-                        const existing = (map[user.id] as { documents?: VerificationDocument[]; submittedAt?: string } | undefined) ?? {};
-                        const documents = existing.documents ?? user.verificationRequest?.documents ?? [];
-                        const submittedAt = existing.submittedAt ?? user.verificationRequest?.submittedAt ?? new Date().toISOString();
-                        const reset = { status: "pending" as const, documents, submittedAt };
-                        map[user.id] = reset;
-                        localStorage.setItem(VERIFICATION_REQUESTS_KEY, JSON.stringify(map));
-                        toast({ title: "تمت إعادة فتح الطلب" });
-                        queryClient.invalidateQueries({ queryKey: ["user", user.id] });
-                      }}>
-                        إعادة فتح للمراجعة
-                      </Button>
+                      <p className="text-xs text-muted-foreground">يمكن للمستخدم إعادة رفع المستندات لتقديم طلب توثيق جديد.</p>
                     </div>
                   )}
                 </CardContent>

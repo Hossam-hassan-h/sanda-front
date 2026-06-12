@@ -1,27 +1,81 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Camera, ScanLine, CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { useCheckIn } from "@/hooks/useJobAssignments";
+import jsQR from "jsqr";
+import { useCheckInWithQR, useCheckOutWithQR } from "@/hooks/useJobAssignments";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 
 interface QRScannerProps {
-  jobId?: string;
   onScanComplete?: (success: boolean) => void;
 }
 
-export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
+export default function QRScanner({ onScanComplete }: QRScannerProps) {
   const [scanning, setScanning] = useState(false);
   const [scannedData, setScannedData] = useState<string>("");
   const [showResult, setShowResult] = useState(false);
   const [result, setResult] = useState<"success" | "error" | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const animFrameRef = useRef<number>(0);
 
-  const checkIn = useCheckIn();
+  const checkInWithQR = useCheckInWithQR();
+  const checkOutWithQR = useCheckOutWithQR();
+  const isPending = checkInWithQR.isPending || checkOutWithQR.isPending;
 
-  // Start camera
+  const processQR = useCallback(async (qrData: string) => {
+    let success = false;
+    try {
+      const parsed = JSON.parse(qrData);
+      const { assignmentId, qrToken, type } = parsed;
+      if (!assignmentId || !qrToken || !type) {
+        throw new Error("بيانات QR غير صالحة");
+      }
+      if (type === "check_in") {
+        await checkInWithQR.mutateAsync({ assignmentId, qrToken });
+        toast({ title: "تم تسجيل الحضور", description: "تم تسجيل دخولك بنجاح" });
+      } else if (type === "check_out") {
+        await checkOutWithQR.mutateAsync({ assignmentId, qrToken });
+        toast({ title: "تم تسجيل الانصراف", description: "تم تسجيل خروجك بنجاح" });
+      } else {
+        throw new Error("نوع QR غير معروف");
+      }
+      success = true;
+      setResult("success");
+    } catch (err) {
+      setResult("error");
+      toast({ title: "خطأ", description: err instanceof Error ? err.message : "فشل في تسجيل QR", variant: "destructive" });
+    } finally {
+      setShowResult(true);
+      stopCamera();
+      onScanComplete?.(success);
+    }
+  }, [checkInWithQR, checkOutWithQR, onScanComplete]);
+
+  const scanFrame = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+      animFrameRef.current = requestAnimationFrame(scanFrame);
+      return;
+    }
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+    if (code) {
+      processQR(code.data);
+      return;
+    }
+    animFrameRef.current = requestAnimationFrame(scanFrame);
+  }, [processQR]);
+
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -33,17 +87,18 @@ export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
         videoRef.current.play();
       }
       setScanning(true);
-    } catch (err) {
-        toast({
-          title: "خطأ في الكاميرا",
+      animFrameRef.current = requestAnimationFrame(scanFrame);
+    } catch {
+      toast({
+        title: "خطأ في الكاميرا",
         description: "يرجى السماح بالوصول للكاميرا",
         variant: "destructive",
       });
     }
   };
 
-  // Stop camera
   const stopCamera = () => {
+    cancelAnimationFrame(animFrameRef.current);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
@@ -51,46 +106,14 @@ export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
     setScanning(false);
   };
 
-  // Handle manual QR input (fallback)
   const handleManualInput = async () => {
     if (!scannedData.trim()) {
       toast({ title: "خطأ", description: "يرجى إدخال بيانات QR", variant: "destructive" });
       return;
     }
-    await processCheckIn(scannedData);
+    await processQR(scannedData);
   };
 
-  // Process check-in
-  const processCheckIn = async (qrCode: string) => {
-    try {
-      const targetJobId = jobId || extractJobIdFromQR(qrCode);
-      if (!targetJobId) {
-        throw new Error("معرف الوظيفة غير موجود");
-      }
-      await checkIn.mutateAsync({ jobId: targetJobId, qrCode });
-      setResult("success");
-      toast({ title: "تم تسجيل الحضور", description: "تم تسجيل دخولك بنجاح" });
-    } catch {
-      setResult("error");
-      toast({ title: "خطأ", description: "فشل في تسجيل الحضور", variant: "destructive" });
-    } finally {
-      setShowResult(true);
-      stopCamera();
-      onScanComplete?.(result === "success");
-    }
-  };
-
-  // Extract jobId from QR data
-  const extractJobIdFromQR = (qrData: string): string | null => {
-    try {
-      const parsed = JSON.parse(qrData);
-      return parsed.jobId || null;
-    } catch {
-      return null;
-    }
-  };
-
-  // Cleanup on unmount
   useEffect(() => {
     return () => stopCamera();
   }, []);
@@ -100,11 +123,10 @@ export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <ScanLine className="w-5 h-5" />
-          مسح QR Code — تسجيل الحضور
+          مسح QR Code
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Camera View */}
         <div className="relative aspect-square max-w-sm mx-auto bg-black rounded-lg overflow-hidden">
           {scanning ? (
             <>
@@ -114,7 +136,7 @@ export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
                 playsInline
                 muted
               />
-              {/* Scan overlay */}
+              <canvas ref={canvasRef} className="hidden" />
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute inset-0 bg-black/30" />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-white/80 rounded-lg">
@@ -145,7 +167,6 @@ export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex gap-2 justify-center">
           {!scanning ? (
             <Button onClick={startCamera}>
@@ -160,7 +181,6 @@ export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
           )}
         </div>
 
-        {/* Manual Input Fallback */}
         <div className="border-t pt-4">
           <p className="text-sm text-muted-foreground mb-2 text-center">
             أو أدخل بيانات QR يدوياً
@@ -175,9 +195,9 @@ export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
             />
             <Button
               onClick={handleManualInput}
-              disabled={checkIn.isPending || !scannedData.trim()}
+              disabled={isPending || !scannedData.trim()}
             >
-              {checkIn.isPending ? (
+              {isPending ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <CheckCircle className="w-4 h-4 mr-2" />
@@ -188,7 +208,6 @@ export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
         </div>
       </CardContent>
 
-      {/* Result Dialog */}
       <Dialog open={showResult} onOpenChange={setShowResult}>
         <DialogContent>
           <DialogHeader>
@@ -198,24 +217,24 @@ export default function QRScanner({ jobId, onScanComplete }: QRScannerProps) {
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                     <CheckCircle className="w-8 h-8 text-green-600" />
                   </div>
-                  <span>تم تسجيل الحضور بنجاح!</span>
+                  <span>تم التسجيل بنجاح!</span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
                     <XCircle className="w-8 h-8 text-red-600" />
                   </div>
-                  <span>فشل في تسجيل الحضور</span>
+                  <span>فشل في التسجيل</span>
                 </div>
               )}
             </DialogTitle>
           </DialogHeader>
           <div className="text-center text-sm text-muted-foreground">
             {result === "success"
-              ? "تم تسجيل دخولك للعمل. سيتم تحويل المبلغ إلى محفظتك بعد انتهاء العمل."
+              ? "تم تسجيل العملية بنجاح"
               : "يرجى التأكد من صحة QR Code والمحاولة مرة أخرى."}
           </div>
-          <Button onClick={() => { setShowResult(false); onScanComplete?.(result === "success"); }} className="w-full">
+          <Button onClick={() => setShowResult(false)} className="w-full">
             حسناً
           </Button>
         </DialogContent>
