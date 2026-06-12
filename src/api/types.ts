@@ -27,8 +27,11 @@ export interface VerificationRequest {
 
 export interface UserSummary {
   id: string;
+  _id?: string;
   name: string;
   avatar?: string;
+  profileImage?: { url?: string | null; publicId?: string | null };
+  profile_image?: { url?: string | null; publicId?: string | null };
   rating?: number;
   ratingsCount?: number;
   city?: string;
@@ -37,9 +40,16 @@ export interface UserSummary {
 
 export interface JobSummary {
   id: string;
+  _id?: string;
   title: string;
   city: string;
   price: number;
+  category?: string;
+  location?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  salary?: number;
 }
 
 // ============================================================================
@@ -125,13 +135,18 @@ export interface Application {
 
 export interface JobAssignment {
   id: string;
+  _id?: string;
   jobId: string;
   job?: JobSummary;
   workerId: string;
   worker?: UserSummary;
+  employer?: UserSummary;
   checkInTime?: string;    // maps to ERD check_in_time
   checkOutTime?: string;   // maps to ERD check_out_time
-  status: "checked-in" | "checked-out" | "no-show";
+  checkedInAt?: string | null;
+  checkedOutAt?: string | null;
+  completedAt?: string | null;
+  status: "assigned" | "in_progress" | "completed" | "cancelled" | "checked-in" | "checked-out" | "no-show";
   createdAt: string;
 }
 
@@ -166,37 +181,33 @@ export interface WalletTransaction {
 
 export interface Conversation {
   id: string;
-  jobId: string;
-  jobTitle: string;        // Denormalized
-  participant: UserSummary; // Denormalized
-  lastMessage: string;     // Denormalized
-  lastMessageAt: string;   // Denormalized
-  unread: number;          // Denormalized
-  createdAt?: string;
-}
-
-export interface ConversationParticipant {
-  id: string;
-  userId: string;
-  conversationId: string;
-}
-
-export interface MessageAttachment {
-  name: string;
-  url: string;
-  size: number;
-  type: string;
+  _id?: string;
+  job: JobSummary;
+  assignment: JobAssignment;
+  employer: UserSummary;
+  worker: UserSummary;
+  lastMessage?: string;
+  last_message?: string;
+  lastMessageAt?: string | null;
+  last_message_at?: string | null;
+  unreadCount?: number;
+  unread_count?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Message {
   id: string;
-  conversationId: string;
-  senderId: string;
-  sender?: UserSummary;
-  message: string;
-  attachments?: MessageAttachment[];
-  isRead: boolean;
+  _id?: string;
+  conversation: string;
+  sender: UserSummary | string;
+  recipient: string;
+  content: string;
+  type: "text";
+  readAt?: string | null;
+  read_at?: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 // ============================================================================
@@ -237,11 +248,22 @@ export interface Report {
 
 export interface Notification {
   id: string;
+  _id?: string;
   title: string;
   message: string;
-  type: "job" | "user" | "report" | "system";
+  type: "job" | "user" | "report" | "system" | "message_received" | string;
+  entityType?: "application" | "job_assignment" | "rating" | "message" | string;
+  entity_type?: "application" | "job_assignment" | "rating" | "message" | string;
+  entityId?: string;
+  entity_id?: string;
+  conversation?: string | { id?: string; _id?: string } | null;
+  job?: JobSummary | string | null;
+  actor?: UserSummary | string | null;
   roleTarget: "admin" | "user" | "worker" | "all";
   isRead: boolean;
+  is_read?: boolean;
+  readAt?: string | null;
+  read_at?: string | null;
   createdAt: string;
   metadata?: Record<string, unknown>;
   userId?: string;
@@ -342,8 +364,7 @@ export interface CreateReportPayload {
 }
 
 export interface SendMessagePayload {
-  message: string;
-  attachments?: { name: string; size: number; type: string; data: string }[];
+  content: string;
 }
 
 export interface WithdrawPayload {

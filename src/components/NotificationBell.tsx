@@ -5,7 +5,7 @@ import {
   useNotifications,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
-  useDeleteNotification,
+  useNotificationUnreadCount,
 } from "@/hooks/useNotifications";
 import NotificationDropdown from "@/components/NotificationDropdown";
 
@@ -14,13 +14,13 @@ export default memo(function NotificationBell() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const role = user?.role === "employer" ? "user" : user?.role;
+  const role = user?.role;
   const { data: notifications, isLoading } = useNotifications(role);
+  const { data: unreadCountData } = useNotificationUnreadCount();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
-  const deleteNotif = useDeleteNotification();
 
-  const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
+  const unreadCount = unreadCountData?.unreadCount ?? unreadCountData?.unread_count ?? 0;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -60,7 +60,6 @@ export default memo(function NotificationBell() {
           userRole={user?.role}
           onMarkRead={(id) => markRead.mutate(id)}
           onMarkAllRead={() => markAllRead.mutate()}
-          onDelete={(id) => deleteNotif.mutate(id)}
           onClose={() => setOpen(false)}
         />
       )}

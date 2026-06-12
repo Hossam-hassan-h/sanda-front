@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import VerificationUpload from "@/components/VerificationUpload";
 import Verification from "@/pages/settings/Verification";
 import { toast } from "@/hooks/use-toast";
@@ -19,6 +19,12 @@ vi.mock("@/hooks/use-toast", () => ({
 vi.mock("@/context/AuthContext", () => ({
   useAuth: vi.fn(),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+vi.mock("@/api/auth", () => ({
+  authApi: {
+    uploadVerificationDocuments: vi.fn().mockResolvedValue(undefined),
+  },
 }));
 
 import { useAuth } from "@/context/AuthContext";
@@ -75,12 +81,14 @@ function mockAuth(user: User | null) {
     register: vi.fn().mockResolvedValue(user),
     logout: vi.fn(),
     switchRole: vi.fn(),
+    updateUser: vi.fn(),
   });
 }
 
 describe("VerificationUpload", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAuth(unverifiedUser);
     vi.useFakeTimers();
   });
   afterEach(() => {
@@ -128,7 +136,8 @@ describe("VerificationUpload", () => {
     });
   });
 
-  it("submits successfully and shows pending state after 2s", () => {
+  it("submits successfully and shows pending state after upload completes", async () => {
+    vi.useRealTimers();
     render(<VerificationUpload onSuccess={vi.fn()} />, { wrapper: Wrapper });
 
     const inputs = document.querySelectorAll<HTMLInputElement>("input[type='file']");
@@ -139,9 +148,9 @@ describe("VerificationUpload", () => {
 
     expect(screen.getByText("جاري رفع الملفات وتشفيرها...")).toBeInTheDocument();
 
-    act(() => { vi.advanceTimersByTime(2000); });
-
-    expect(screen.getByText("المستندات قيد المراجعة")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("المستندات قيد المراجعة")).toBeInTheDocument();
+    });
     expect(screen.getByText("تم استلام مستندات التوثيق بنجاح وجاري تدقيقها حالياً.")).toBeInTheDocument();
   });
 });
