@@ -41,18 +41,28 @@ export default memo(function NotificationDropdown({
   const isAdmin = userRole === "admin";
 
   const handleNotificationClick = (notification: Notification) => {
-    if (!notification.isRead) onMarkRead(notification.id);
+    if (!notification.isRead) {
+      try { onMarkRead(notification.id); } catch { /* best-effort */ }
+    }
 
     const jobId = typeof notification.job === "object" ? notification.job?.id ?? notification.job?._id : notification.job;
     const conversationId =
       typeof notification.conversation === "object"
         ? notification.conversation?.id ?? notification.conversation?._id
         : notification.conversation;
+    const notifType = notification.type;
 
     if (conversationId || notification.metadata?.conversationId) {
-      navigate("/chat");
+      navigate(`/chat?conversation=${conversationId ?? notification.metadata?.conversationId}`);
     } else if (jobId || notification.metadata?.jobId) {
-      navigate(isAdmin ? `/admin/jobs/${jobId ?? notification.metadata?.jobId}` : `/jobs/${jobId ?? notification.metadata?.jobId}`);
+      const targetJobId = jobId ?? notification.metadata?.jobId;
+      if (isAdmin) {
+        navigate(`/admin/jobs/${targetJobId}`);
+      } else if (notifType === "application_created") {
+        navigate(`/jobs/${targetJobId}/applicants`);
+      } else {
+        navigate(`/jobs/${targetJobId}`);
+      }
     } else if (notification.metadata?.reportId) {
       navigate(`/admin/reports/${notification.metadata.reportId}`);
     }

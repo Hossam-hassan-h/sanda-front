@@ -8,7 +8,6 @@ import { Modal } from "@/components/admin/Modal";
 import { ErrorState } from "@/components/admin/ErrorState";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
 import { useChatConversationsQuery, useChatConversationQuery } from "@/hooks/useAdminQueries";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Eye, Clock } from "lucide-react";
@@ -69,19 +68,19 @@ export default function AdminChatMonitor() {
     {
       key: "party",
       header: "الطرف",
-      render: (item) => <span className="font-medium">{item.participant.name}</span>,
+      render: (item) => <span className="font-medium">{item.employer?.name ?? item.worker?.name ?? ""}</span>,
     },
     {
       key: "jobTitle",
       header: "الوظيفة",
-      render: (item) => <span className="text-muted-foreground">{item.jobTitle}</span>,
+      render: (item) => <span className="text-muted-foreground">{item.job?.title ?? ""}</span>,
     },
     {
       key: "lastMessage",
       header: "آخر رسالة",
       render: (item) => (
         <span className="text-muted-foreground text-sm truncate block max-w-[220px]">
-          {item.lastMessage}
+          {item.last_message ?? ""}
         </span>
       ),
     },
@@ -91,25 +90,12 @@ export default function AdminChatMonitor() {
       render: (item) => (
         <div className="flex items-center gap-1 text-sm text-muted-foreground whitespace-nowrap">
           <Clock className="h-3 w-3" />
-          {new Date(item.lastMessageAt).toLocaleString("ar-EG", {
+          {new Date(item.last_message_at ?? item.updatedAt ?? "").toLocaleString("ar-EG", {
             dateStyle: "short",
             timeStyle: "short",
           })}
         </div>
       ),
-    },
-    {
-      key: "unread",
-      header: "غير مقروء",
-      className: "text-center",
-      render: (item) =>
-        item.unread > 0 ? (
-          <Badge variant="destructive" className="text-xs">
-            {item.unread}
-          </Badge>
-        ) : (
-          <span className="text-muted-foreground text-sm">0</span>
-        ),
     },
   ];
 
@@ -183,17 +169,14 @@ export default function AdminChatMonitor() {
                 <Card className="border border-border">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm">{item.participant.name}</span>
-                      {item.unread > 0 ? (
-                        <Badge variant="destructive" className="text-xs">{item.unread}</Badge>
-                      ) : null}
+                      <span className="font-medium text-sm">{item.employer?.name ?? item.worker?.name ?? ""}</span>
                     </div>
-                    <div className="text-xs text-muted-foreground mb-1">{item.jobTitle}</div>
-                    <div className="text-sm text-muted-foreground truncate mb-2">{item.lastMessage}</div>
+                    <div className="text-xs text-muted-foreground mb-1">{item.job?.title ?? ""}</div>
+                    <div className="text-sm text-muted-foreground truncate mb-2">{item.last_message ?? ""}</div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
-                        {new Date(item.lastMessageAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
+                        {new Date(item.last_message_at ?? item.updatedAt ?? "").toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
                       </div>
                       <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleViewConversation(item); }}>
                         <Eye className="h-3.5 w-3.5 ml-1" /> عرض المحادثة
@@ -234,8 +217,8 @@ export default function AdminChatMonitor() {
               <div className="flex flex-col max-h-[70vh]">
                 <div className="p-4 border-b border-border flex items-center gap-3 bg-muted/20 rounded-t-lg">
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm">{conversation.participant.name}</div>
-                    <div className="text-xs text-muted-foreground">{conversation.jobTitle}</div>
+                    <div className="font-semibold text-sm">{conversation.employer?.name ?? conversation.worker?.name ?? ""}</div>
+                    <div className="text-xs text-muted-foreground">{conversation.job?.title ?? ""}</div>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {messages.length} رسالة

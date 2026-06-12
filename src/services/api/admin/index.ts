@@ -5,7 +5,10 @@ import type {
   AdminWalletApi,
   AdminChatApi,
   AdminDashboardApi,
+  PaginatedResponse,
+  ChatDetail,
 } from "./admin-types";
+import type { Conversation } from "@/api/types";
 
 import {
   fetchUsers,
@@ -28,11 +31,11 @@ import {
 } from "./endpoints/jobs";
 
 import { fetchDashboardStats } from "./endpoints/dashboard";
+import { fetchChats, fetchChatById } from "./endpoints/chat";
 
 import {
   mockReportsHandlers,
   mockWalletHandlers,
-  mockChatHandlers,
   richMockReports,
   richMockTransactions,
   richMockConversations,
@@ -118,8 +121,8 @@ export const walletApi: AdminWalletApi = {
 };
 
 export const chatApi: AdminChatApi = {
-  getAll: (params?) => mockChatHandlers.getAll(params),
-  getById: (id) => mockChatHandlers.getById(id),
+  getAll: (params?) => fetchChats(params) as Promise<PaginatedResponse<Conversation>>,
+  getById: (id) => fetchChatById(id) as Promise<ChatDetail>,
 };
 
 export const dashboardApi: AdminDashboardApi = {

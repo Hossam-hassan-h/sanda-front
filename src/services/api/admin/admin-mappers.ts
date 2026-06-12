@@ -56,7 +56,7 @@ export function mapBackendJob(raw: Record<string, unknown>): Job {
       name: (owner?.name as string) ?? "",
       avatar: ownerProfileImage?.url as string | undefined,
     },
-    applicantsCount: (raw.acceptedWorkersCount as number) ?? 0,
+    applicantsCount: (raw.applicantsCount as number) ?? 0,
     createdAt: raw.createdAt as string,
     updatedAt: raw.updatedAt as string | undefined,
   };

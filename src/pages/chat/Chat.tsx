@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Loader2, MessageCircle, Send } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,6 +13,7 @@ import {
   useSendMessage,
 } from "@/hooks/useChat";
 import { useAuth } from "@/context/AuthContext";
+import { useSocketConnect } from "@/hooks/useSocket";
 import type { Conversation, Message, UserSummary } from "@/api/types";
 
 const getId = (item: { id?: string; _id?: string } | string | null | undefined) =>
@@ -34,25 +36,42 @@ function isSenderMine(message: Message, userId?: string) {
 
 export default function Chat() {
   const { user } = useAuth();
+  const { isConnected } = useSocketConnect();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const preselectedId = searchParams.get("conversation");
   const { data: conversations, isLoading, isError } = useConversations();
   const [activeId, setActiveId] = useState<string | null>(null);
   const { data: messages, isLoading: messagesLoading } = useMessages(activeId ?? "");
   const send = useSendMessage();
   const { mutate: markConversationRead } = useMarkConversationRead();
   const [text, setText] = useState("");
-  const endRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
+  // Auto-select conversation from URL param, or fall back to first conversation
   useEffect(() => {
-    if (!activeId && conversations?.[0]) setActiveId(getId(conversations[0]));
-  }, [activeId, conversations]);
+    if (!conversations || conversations.length === 0) return;
+    if (preselectedId) {
+      const match = conversations.find((c) => getId(c) === preselectedId);
+      if (match) {
+        setActiveId(preselectedId);
+        // Clear the search param so it doesn't re-trigger
+        setSearchParams({}, { replace: true });
+        return;
+      }
+    }
+    if (!activeId && conversations[0]) {
+      setActiveId(getId(conversations[0]));
+    }
+  }, [conversations, preselectedId, activeId, setSearchParams]);
 
   useEffect(() => {
     if (activeId) markConversationRead(activeId);
   }, [activeId, messages?.length, markConversationRead]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages]);
+    const el = messagesRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, messages?.length]);
 
   const active = conversations?.find((conversation) => getId(conversation) === activeId);
   const cancelled = getAssignmentStatus(active) === "cancelled";
@@ -66,7 +85,15 @@ export default function Chat() {
   return (
     <UserLayout>
       <div className="container mx-auto px-4 md:px-6 py-6 lg:py-10" dir="rtl">
-        <h1 className="font-heading font-extrabold text-3xl mb-6">المحادثات</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <h1 className="font-heading font-extrabold text-3xl">المحادثات</h1>
+          <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${
+            isConnected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-600" : "bg-red-600"}`} />
+            {isConnected ? "متصل" : "غير متصل"}
+          </span>
+        </div>
         <div className="bg-card border border-border rounded-lg overflow-hidden grid md:grid-cols-[320px_1fr] h-[70vh] min-h-[560px]">
           <aside className="border-e border-border overflow-y-auto">
             {isLoading ? (
@@ -107,7 +134,7 @@ export default function Chat() {
           </aside>
 
           {active ? (
-            <section className="flex flex-col min-w-0">
+            <section className="flex flex-col min-w-0 min-h-0">
               <div className="p-4 border-b border-border flex items-center gap-3">
                 {(() => {
                   const participant = getOtherParticipant(active, user?.id);
@@ -126,7 +153,7 @@ export default function Chat() {
                 })()}
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/30">
+              <div ref={messagesRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/30">
                 {messagesLoading ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-56 rounded-2xl" />)}
@@ -155,7 +182,6 @@ export default function Chat() {
                     </div>
                   </div>
                 )}
-                <div ref={endRef} />
               </div>
 
               <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="p-3 border-t border-border flex gap-2">

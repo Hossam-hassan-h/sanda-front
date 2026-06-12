@@ -57,7 +57,10 @@ export const useAcceptApplicant = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (applicationId: string) => jobsApi.acceptApplicant(applicationId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["applicants"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["applicants"] });
+      qc.invalidateQueries({ queryKey: ["assignments"] });
+    },
   });
 };
 

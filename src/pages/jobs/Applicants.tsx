@@ -1,5 +1,5 @@
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Check, X, Star, MapPin, MessageCircle, CreditCard } from "lucide-react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Check, X, Star, MapPin, MessageCircle, CreditCard, Loader2 } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -7,16 +7,22 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useApplicants, useAcceptApplicant, useRejectApplicant, useJob } from "@/hooks/useJobs";
+import { useJobAssignments } from "@/hooks/useJobAssignments";
+import { useCreateConversation } from "@/hooks/useChat";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
 
 export default function Applicants() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: job } = useJob(id!);
   const { data: applicants, isLoading } = useApplicants(id!);
+  const { data: assignments } = useJobAssignments(id!);
   const accept = useAcceptApplicant();
   const reject = useRejectApplicant();
+  const createConversation = useCreateConversation();
   const [paymentFor, setPaymentFor] = useState<string | null>(null);
+  const [messagingId, setMessagingId] = useState<string | null>(null);
 
   const handleAccept = (appId: string) => setPaymentFor(appId);
 
@@ -37,6 +43,23 @@ export default function Applicants() {
       toast({ title: "تم رفض المتقدم" });
     } catch {
       toast({ title: "فشل الرفض", variant: "destructive" });
+    }
+  };
+
+  const handleMessage = async (workerId: string) => {
+    setMessagingId(workerId);
+    try {
+      const assignment = assignments?.find((a) => a.workerId === workerId);
+      if (!assignment) {
+        toast({ title: "لم يتم العثور على تعيين لهذا العامل", variant: "destructive" });
+        return;
+      }
+      const conv = await createConversation.mutateAsync(assignment.id ?? assignment._id ?? "");
+      navigate(`/chat?conversation=${conv.id ?? conv._id ?? ""}`);
+    } catch {
+      toast({ title: "فشل فتح المحادثة", variant: "destructive" });
+    } finally {
+      setMessagingId(null);
     }
   };
 
@@ -93,8 +116,18 @@ export default function Applicants() {
                   )}
 
                   {a.status === "accepted" && (
-                    <Button size="sm" variant="ghost" asChild>
-                      <Link to="/chat"><MessageCircle className="h-4 w-4" /> مراسلة</Link>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleMessage(a.worker.id)}
+                      disabled={messagingId === a.worker.id && createConversation.isPending}
+                    >
+                      {messagingId === a.worker.id && createConversation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MessageCircle className="h-4 w-4" />
+                      )}
+                      مراسلة
                     </Button>
                   )}
                 </div>

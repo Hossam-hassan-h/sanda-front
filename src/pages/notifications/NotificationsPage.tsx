@@ -8,6 +8,8 @@ import {
   useNotificationUnreadCount,
   useNotifications,
 } from "@/hooks/useNotifications";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/hooks/use-toast";
 import type { Notification } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,6 +45,7 @@ function formatNotifDate(dateStr: string) {
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [typeFilter, setTypeFilter] = useState("all");
   const { data: notifications, isLoading, isError } = useNotifications();
   const { data: unreadCountData } = useNotificationUnreadCount();
@@ -55,21 +58,42 @@ export default function NotificationsPage() {
     return typeFilter === "all" ? notifications : notifications.filter((n) => n.type === typeFilter);
   }, [notifications, typeFilter]);
 
-  const handleNotificationClick = (notification: Notification) => {
-    if (!notification.isRead) markRead.mutate(notification.id);
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.isRead) {
+      try {
+        await markRead.mutateAsync(notification.id);
+      } catch {
+        toast({ title: "فشل تحديث الإشعار", variant: "destructive" });
+      }
+    }
 
     const jobId = typeof notification.job === "object" ? notification.job?.id ?? notification.job?._id : notification.job;
     const conversationId =
       typeof notification.conversation === "object"
         ? notification.conversation?.id ?? notification.conversation?._id
         : notification.conversation;
+    const userRole = user?.role;
+    const notifType = notification.type;
 
     if (conversationId || notification.metadata?.conversationId) {
-      navigate("/chat");
-    } else if (jobId || notification.metadata?.jobId) {
-      navigate(`/admin/jobs/${jobId ?? notification.metadata?.jobId}`);
-    } else if (notification.metadata?.reportId) {
+      navigate(`/chat?conversation=${conversationId ?? notification.metadata?.conversationId}`);
+      return;
+    }
+
+    if (notification.metadata?.reportId) {
       navigate(`/admin/reports/${notification.metadata.reportId}`);
+      return;
+    }
+
+    const targetJobId = jobId ?? notification.metadata?.jobId;
+    if (!targetJobId) return;
+
+    if (userRole === "admin") {
+      navigate(`/admin/jobs/${targetJobId}`);
+    } else if (userRole === "employer" && notifType === "application_created") {
+      navigate(`/jobs/${targetJobId}/applicants`);
+    } else {
+      navigate(`/jobs/${targetJobId}`);
     }
   };
 

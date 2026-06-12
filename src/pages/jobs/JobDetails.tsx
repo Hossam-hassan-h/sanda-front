@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { MapPin, Clock, Calendar, Users, Star, ShieldCheck, MessageCircle, ArrowLeft, QrCode } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { MapPin, Clock, Calendar, Users, Star, ShieldCheck, MessageCircle, ArrowLeft, QrCode, Loader2 } from "lucide-react";
 import MapView from "@/components/MapView";
 import UserLayout from "@/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { useJob, useApplyToJob, useApplicants } from "@/hooks/useJobs";
+import { useJobAssignments, useMyAssignments } from "@/hooks/useJobAssignments";
+import { useCreateConversation } from "@/hooks/useChat";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,13 +18,43 @@ import type { GeoCoordinates } from "@/lib/geolocation";
 
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { data: job, isLoading } = useJob(id!);
   const { user } = useAuth();
   const apply = useApplyToJob();
   const [message, setMessage] = useState("");
   const [open, setOpen] = useState(false);
 
+  const isWorker = user?.role === "worker";
+  const isEmployer = user?.role === "employer";
+
   const { data: applicants } = useApplicants(id ?? "");
+  // Fetch assignments according to user role to avoid 403 errors
+  const { data: employerAssignments } = useJobAssignments(isEmployer ? (id ?? "") : "");
+  const { data: workerAssignments } = useMyAssignments();
+
+  const createConversation = useCreateConversation();
+
+  const handleMessage = useCallback(async () => {
+    if (!job || !user) return;
+    const myAssignments = isEmployer ? (employerAssignments ?? []) : (workerAssignments ?? []);
+    const isJobOwner = isEmployer && job.employerId === user.id;
+    const assignment = myAssignments.find((a) => {
+      if (isJobOwner) return a.jobId === job.id && a.workerId === job.workerId;
+      return a.jobId === job.id && a.workerId === user.id;
+    });
+    if (!assignment) {
+      toast({ title: "لم يتم العثور على مهمة نشطة", description: "لا توجد مهمة مرتبطة بهذه الوظيفة للمراسلة", variant: "destructive" });
+      return;
+    }
+    try {
+      const conversation = await createConversation.mutateAsync(assignment.id);
+      const convId = conversation?.id ?? conversation?._id ?? "";
+      navigate(`/chat?conversation=${convId}`);
+    } catch {
+      toast({ title: "فشل فتح المحادثة", variant: "destructive" });
+    }
+  }, [job, user, isEmployer, employerAssignments, workerAssignments, createConversation, navigate]);
 
   const handleApply = async () => {
     if (!job) return;
@@ -35,9 +67,6 @@ export default function JobDetails() {
       toast({ title: "فشل إرسال الطلب", variant: "destructive" });
     }
   };
-
-  const isWorker = user?.role === "worker";
-  const isEmployer = user?.role === "employer";
 
   if (isLoading) return <UserLayout><div className="container mx-auto px-4 py-10"><Skeleton className="h-96 rounded-xl" /></div></UserLayout>;
   if (!job) return <UserLayout><div className="container mx-auto px-4 py-20 text-center text-muted-foreground">الوظيفة غير موجودة.</div></UserLayout>;
@@ -190,16 +219,38 @@ export default function JobDetails() {
                     </Link>
                   </Button>
                 )}
-                <Button variant="outline" size="lg" className="w-full" asChild>
-                  <Link to={`/chat`}><MessageCircle className="h-4 w-4" /> مراسلة {isAcceptedWorker ? "صاحب العمل" : "العامل"}</Link>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleMessage}
+                  disabled={createConversation.isPending}
+                >
+                  {createConversation.isPending ? (
+                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                  ) : (
+                    <MessageCircle className="h-4 w-4 ml-2" />
+                  )}
+                  مراسلة {isAcceptedWorker ? "صاحب العمل" : "العامل"}
                 </Button>
               </div>
             )}
 
             {/* شات فقط لو مكتملة */}
             {(isAcceptedWorker || isJobOwner) && job.status !== "in-progress" && (
-              <Button variant="outline" size="lg" className="w-full" asChild>
-                <Link to={`/chat`}><MessageCircle className="h-4 w-4" /> مراسلة {isAcceptedWorker ? "صاحب العمل" : "العامل"}</Link>
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onClick={handleMessage}
+                disabled={createConversation.isPending}
+              >
+                {createConversation.isPending ? (
+                  <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+                ) : (
+                  <MessageCircle className="h-4 w-4 ml-2" />
+                )}
+                مراسلة {isAcceptedWorker ? "صاحب العمل" : "العامل"}
               </Button>
             )}
           </aside>

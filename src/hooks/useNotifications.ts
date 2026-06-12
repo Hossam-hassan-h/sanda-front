@@ -26,9 +26,9 @@ function useNotificationMutation<TArgs>(
   return useMutation({
     mutationFn,
     onMutate: async (args) => {
-      await qc.cancelQueries({ queryKey: NOTIF_KEY });
-      const prev = qc.getQueriesData<Notification[]>({ queryKey: NOTIF_KEY });
-      qc.setQueriesData<Notification[]>({ queryKey: NOTIF_KEY }, (old) => optimisticUpdate(old, args));
+      await qc.cancelQueries({ queryKey: NOTIF_KEY, exact: true });
+      const prev = qc.getQueriesData<Notification[]>({ queryKey: NOTIF_KEY, exact: true });
+      qc.setQueriesData<Notification[]>({ queryKey: NOTIF_KEY, exact: true }, (old) => optimisticUpdate(old, args));
       return { prev };
     },
     onError: (_err, _args, ctx) => {
