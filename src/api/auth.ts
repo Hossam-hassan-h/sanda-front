@@ -1,4 +1,4 @@
-﻿import api, { USE_MOCKS } from "./client";
+import api, { USE_MOCKS } from "./client";
 import { mockUsers } from "@/lib/mock/data";
 import { mockDelay } from "@/lib/mock/utils";
 import type { User, UserRole } from "./types";
@@ -135,6 +135,36 @@ export const authApi = {
       return mockDelay(undefined);
     }
     await api.put(`/auth/change-password`, { currentPassword: payload.currentPassword, newPassword: payload.newPassword });
+  },
+
+  async forgotPassword(payload: { email: string }): Promise<{ message: string }> {
+    if (USE_MOCKS) {
+      return mockDelay({ message: "OTP sent" });
+    }
+    const { data } = await api.post("/auth/forgot-password", payload);
+    return data as { message: string };
+  },
+
+  async resetPassword(payload: { email: string; otp: string; newPassword: string }): Promise<{ message: string }> {
+    if (USE_MOCKS) {
+      return mockDelay({ message: "Password updated" });
+    }
+    const { data } = await api.post("/auth/reset-password", payload);
+    return data as { message: string };
+  },
+
+  async verifyEmail(payload: { email: string; otp: string }): Promise<{ user: User; token: string }> {
+    if (USE_MOCKS) {
+      const cached = localStorage.getItem("sanda_user");
+      const user = cached ? JSON.parse(cached) as User : mockUsers[0];
+      return mockDelay({ user, token: "mock-token-verified" });
+    }
+    const { data } = await api.post("/auth/verify-email", payload);
+    const raw = data as Record<string, unknown>;
+    const token = (raw.accessToken as string) || "";
+    localStorage.setItem("sanda_token", token);
+    const user = await authApi.me();
+    return { user, token };
   },
 };
 

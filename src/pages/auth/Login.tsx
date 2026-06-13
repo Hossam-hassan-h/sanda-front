@@ -1,4 +1,4 @@
-﻿import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import AuthLayout from "@/layouts/AuthLayout";
 import { Input } from "@/components/ui/input";
@@ -72,7 +72,7 @@ export default function Login() {
         <div>
           <div className="flex items-center justify-between gap-3">
             <Label htmlFor="password">كلمة المرور</Label>
-            <Link to="/login" className="text-sm text-primary hover:underline">
+            <Link to="/forgot-password" className="text-sm text-primary hover:underline">
               نسيت كلمة المرور؟
             </Link>
           </div>

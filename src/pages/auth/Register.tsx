@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Briefcase, User } from "lucide-react";
@@ -13,6 +13,8 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/get-api-error-message";
 import type { UserRole } from "@/api/types";
+
+const ACCOUNT_VERIFY_EMAIL_KEY = "account_verify_email";
 
 interface FormValues {
   name: string;
@@ -53,8 +55,10 @@ export default function Register() {
         password: values.password,
         role,
       });
-      toast({ title: "تم إنشاء الحساب", description: "ابدأ باستكشاف الوظائف!" });
-      navigate("/jobs");
+      // Save email so VerifyEmail page can read it
+      localStorage.setItem(ACCOUNT_VERIFY_EMAIL_KEY, values.email.trim().toLowerCase());
+      toast({ title: "تم إنشاء الحساب", description: "تحقق من بريدك الإلكتروني وأدخل رمز التحقق." });
+      navigate("/verify-email");
     } catch (error) {
       const message = getApiErrorMessage(error, "فشل إنشاء الحساب. حاول مرة أخرى.");
       setError("root", { message });

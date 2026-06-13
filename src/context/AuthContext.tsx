@@ -7,7 +7,8 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (payload: LoginPayload) => Promise<User>;
-  register: (payload: RegisterPayload) => Promise<User>;
+  register: (payload: RegisterPayload) => Promise<{ message: string; userId: string }>;
+  loginFromVerification: (user: User, token: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   updateUser: (updates: Partial<User>) => void;
@@ -63,13 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (payload: RegisterPayload) => {
     setIsLoading(true);
     try {
-      const { user: u, token } = await authApi.register(payload);
-      persist(u, token);
-      return u;
+      const result = await authApi.register(payload);
+      // Backend returns { message, userId } — user must verify email via OTP before getting a token
+      return result as unknown as { message: string; userId: string };
     } finally {
       setIsLoading(false);
     }
-  }, [persist]);
+  }, [setIsLoading]);
 
   const logout = useCallback(() => {
     persist(null);
@@ -86,6 +87,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const loginFromVerification = useCallback((user: User, token: string) => {
+    persist(user, token);
+  }, [persist]);
+
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser((prev) => {
       if (!prev) return prev;
@@ -96,8 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isLoading, isAuthenticated: !!user, login, register, logout, switchRole, updateUser }),
-    [user, isLoading, login, register, logout, switchRole, updateUser]
+    () => ({ user, isLoading, isAuthenticated: !!user, login, register, loginFromVerification, logout, switchRole, updateUser }),
+    [user, isLoading, login, register, loginFromVerification, logout, switchRole, updateUser]
   );
 
   return (

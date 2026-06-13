@@ -49,6 +49,12 @@ const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 
 const NotFound = lazy(() => import("./pages/NotFound"));
 
+// Auth flow pages
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const VerifyOtp = lazy(() => import("./pages/auth/VerifyOtp"));
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
+const VerifyEmail = lazy(() => import("./pages/auth/VerifyEmail"));
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
 });
@@ -103,6 +109,10 @@ const App = () => (
             <Route path="/" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp" element={<VerifyOtp />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/help" element={<Help />} />
             <Route path="/about" element={<About />} />
             <Route path="/terms" element={<Terms />} />
