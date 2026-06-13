@@ -14,6 +14,7 @@ export const useUsersQuery = (params?: {
   useQuery({
     queryKey: ["admin", "users", params],
     queryFn: () => usersApi.getAll(params),
+    placeholderData: (previousData) => previousData,
   });
 
 export const useUserQuery = (id: string | null) =>
@@ -128,6 +129,7 @@ export const useReportsQuery = (params?: {
   useQuery({
     queryKey: ["admin", "reports", params],
     queryFn: () => reportsApi.getAll(params),
+    placeholderData: (previousData) => previousData,
   });
 
 export const useReportQuery = (id: string | null) =>
@@ -179,6 +181,7 @@ export const useJobsQuery = (params?: {
   useQuery({
     queryKey: ["admin", "jobs", params],
     queryFn: () => jobsApi.getAll(params),
+    placeholderData: (previousData) => previousData,
   });
 
 export const useJobQuery = (id: string | null) =>
@@ -229,6 +232,7 @@ export const useWalletTransactionsQuery = (params?: {
   useQuery({
     queryKey: ["admin", "wallet", params],
     queryFn: () => walletApi.getAll(params),
+    placeholderData: (previousData) => previousData,
   });
 
 export const useWalletStatsQuery = () =>
@@ -248,6 +252,7 @@ export const useChatConversationsQuery = (params?: {
   useQuery({
     queryKey: ["admin", "chat", params],
     queryFn: () => chatApi.getAll(params),
+    placeholderData: (previousData) => previousData,
   });
 
 export const useChatConversationQuery = (id: string | null) =>

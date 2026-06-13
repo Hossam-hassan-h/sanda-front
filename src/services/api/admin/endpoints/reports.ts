@@ -28,22 +28,29 @@ export async function fetchReports(params?: AdminReportsParams): Promise<Paginat
     };
   }
   try {
-    const response = await api.get("/admin/reports", { params });
-    const body = response.data as { data: Report[] };
+    const backendParams: Record<string, unknown> = {
+      page: params?.page ?? 1,
+      pageSize: params?.pageSize ?? 10,
+    };
+    if (params?.search) backendParams.search = params.search;
+    if (params?.status) backendParams.status = params.status;
+
+    const response = await api.get("/admin/reports", { params: backendParams });
+    const body = response.data as { data: Report[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } };
     let items = body.data ?? [];
 
-    if (params?.search) {
+    if (params?.search && Array.isArray(items)) {
       const q = params.search.toLowerCase();
       items = items.filter((r) => r.reason.toLowerCase().includes(q));
     }
 
-    const page = params?.page ?? 1;
-    const pageSize = params?.pageSize ?? 10;
+    const pagination = body.pagination;
+
     return {
-      data: items.slice((page - 1) * pageSize, page * pageSize),
-      total: items.length,
-      page,
-      pageSize,
+      data: Array.isArray(items) ? items : [],
+      total: pagination?.total ?? (Array.isArray(items) ? items.length : 0),
+      page: pagination?.page ?? (params?.page ?? 1),
+      pageSize: pagination?.pageSize ?? (params?.pageSize ?? 10),
     };
   } catch {
     return null;

@@ -118,6 +118,11 @@ export default function AdminUsers() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const handleSearch = useCallback((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, []);
+
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [banUserId, setBanUserId] = useState<string | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -139,8 +144,8 @@ export default function AdminUsers() {
 
   const users = query.data?.data ?? [];
   const total = query.data?.total ?? 0;
-  const currentPage = query.data?.page ?? 1;
-  const currentPageSize = query.data?.pageSize ?? 10;
+
+
 
   function normalizePhone(phone: string): string {
     if (!phone.startsWith("+")) return `+20${phone.replace(/^0+/, "")}`;
@@ -310,10 +315,7 @@ export default function AdminUsers() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <Search
           placeholder="ابحث بالاسم، الهاتف، أو المدينة..."
-          onSearch={(v) => {
-            setSearch(v);
-            setPage(1);
-          }}
+          onSearch={handleSearch}
         />
       </div>
 
@@ -535,10 +537,10 @@ export default function AdminUsers() {
             />
             {total > 0 && (
               <Pagination
-                currentPage={currentPage}
-                totalPages={Math.max(1, Math.ceil(total / currentPageSize))}
+                currentPage={page}
+                totalPages={Math.max(1, Math.ceil(total / pageSize))}
                 totalItems={total}
-                pageSize={currentPageSize}
+                pageSize={pageSize}
                 onPageChange={setPage}
                 onPageSizeChange={(size) => {
                   setPageSize(size);
