@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { Modal } from "./Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import FormSubmitButton from "@/components/common/FormSubmitButton";
 import PhoneInput from "react-phone-number-input/input";
 import type { User } from "@/api/types";
 
@@ -143,10 +144,9 @@ export default function EditUserModal({ open, onOpenChange, user, onSave, isSavi
             <Button variant="outline" onClick={() => { if (hasChanges) { setConfirmOpen(true); return; } onOpenChange(false); }}>
               إلغاء
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving && <Loader2 className="h-4 w-4 animate-spin ml-1" />}
+            <FormSubmitButton pending={isSaving} pendingLabel="جاري الحفظ...">
               حفظ التغييرات
-            </Button>
+            </FormSubmitButton>
           </div>
         </div>
       </Modal>

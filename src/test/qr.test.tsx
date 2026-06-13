@@ -6,7 +6,6 @@ import QRScanner from "@/components/QRScanner";
 import { jobAssignmentsApi } from "@/api/jobAssignments";
 import { toast } from "@/hooks/use-toast";
 
-// Mock the toast hook
 vi.mock("@/hooks/use-toast", () => ({
   toast: vi.fn(),
   useToast: vi.fn(() => ({
@@ -16,11 +15,9 @@ vi.mock("@/hooks/use-toast", () => ({
   })),
 }));
 
-// Mock browser dependencies for QR scanner in jsdom
 beforeEach(() => {
   vi.clearAllMocks();
 
-  // Mock HTMLVideoElement.prototype.play and srcObject
   if (typeof window !== "undefined") {
     HTMLVideoElement.prototype.play = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(HTMLVideoElement.prototype, "srcObject", {
@@ -30,16 +27,11 @@ beforeEach(() => {
     });
   }
 
-  // Mock navigator.mediaDevices.getUserMedia
   if (typeof navigator !== "undefined") {
     Object.defineProperty(navigator, "mediaDevices", {
       value: {
         getUserMedia: vi.fn().mockResolvedValue({
-          getTracks: () => [
-            {
-              stop: vi.fn(),
-            },
-          ],
+          getTracks: () => [{ stop: vi.fn() }],
         }),
       },
       writable: true,
@@ -51,12 +43,8 @@ beforeEach(() => {
 const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: {
-        retry: false,
-      },
-      mutations: {
-        retry: false,
-      },
+      queries: { retry: false },
+      mutations: { retry: false },
     },
   });
   return ({ children }: { children: React.ReactNode }) => (
@@ -65,77 +53,91 @@ const createWrapper = () => {
 };
 
 describe("QRGenerator Component", () => {
-  it("should display a warning if the job status is not 'in-progress'", () => {
+  it("shows checked-out state when assignment status is checked-out", () => {
     render(
-      <QRGenerator jobId="j1" jobTitle="نادل لحفل زفاف" jobStatus="open" />,
+      <QRGenerator assignmentId="a1" assignmentStatus="checked-out" workerName="أحمد" />,
       { wrapper: createWrapper() }
     );
-
-    expect(
-      screen.getByText("QR Code بيظهر لما تبدأ الوظيفة")
-    ).toBeInTheDocument();
+    expect(screen.getByText("تم الانصراف")).toBeInTheDocument();
+    expect(screen.getByText("أحمد")).toBeInTheDocument();
   });
 
-    it("should render generate button when job is in-progress and no QR code is generated yet", () => {
-      render(
-        <QRGenerator jobId="j4" jobTitle="مساعد مطبخ" jobStatus="in-progress" />,
-        { wrapper: createWrapper() }
-      );
+  it("shows check-in QR button when not checked in yet", () => {
+    render(
+      <QRGenerator assignmentId="a1" assignmentStatus="assigned" />,
+      { wrapper: createWrapper() }
+    );
+    expect(screen.getByRole("button", { name: /QR حضور/ })).toBeInTheDocument();
+  });
 
-      expect(screen.getByText("توليد QR Code")).toBeInTheDocument();
-    });
+  it("shows check-out QR button when checked in", () => {
+    render(
+      <QRGenerator assignmentId="a1" assignmentStatus="checked-in" />,
+      { wrapper: createWrapper() }
+    );
+    expect(screen.getByRole("button", { name: /QR انصراف/ })).toBeInTheDocument();
+  });
 
-  it("should generate and display QR code when generate button is clicked", async () => {
+  it("shows worker name in header when provided", () => {
+    render(
+      <QRGenerator assignmentId="a1" workerName="أحمد المصري" />,
+      { wrapper: createWrapper() }
+    );
+    expect(screen.getByText(/أحمد المصري/)).toBeInTheDocument();
+  });
+
+  it("generates check-in QR and displays image on click", async () => {
     const generateSpy = vi
-      .spyOn(jobAssignmentsApi, "generateQR")
-      .mockResolvedValue({
-        qrCode: "https://example.com/mock-qr.png",
-        qrData: JSON.stringify({
-          jobId: "j4",
-          timestamp: 123456789,
-          secret: "sanda-secret",
-        }),
-      });
+      .spyOn(jobAssignmentsApi, "generateCheckInQR")
+      .mockResolvedValue({ qrToken: "test-token", type: "check_in", expiresAt: new Date(Date.now() + 300000).toISOString() });
 
     render(
-      <QRGenerator jobId="j4" jobTitle="مساعد مطبخ" jobStatus="in-progress" />,
+      <QRGenerator assignmentId="a1" assignmentStatus="assigned" />,
       { wrapper: createWrapper() }
     );
 
-    const button = screen.getByRole("button", { name: "توليد QR Code" });
-    fireEvent.click(button);
+    const btn = screen.getByRole("button", { name: /QR حضور/ });
+    fireEvent.click(btn);
 
     await waitFor(() => {
-      expect(generateSpy).toHaveBeenCalledWith("j4");
+      expect(generateSpy).toHaveBeenCalledWith("a1");
     });
 
-    // Verify QR code image is displayed
     const qrImage = await screen.findByAltText("QR Code");
     expect(qrImage).toBeInTheDocument();
-    expect(qrImage).toHaveAttribute("src", "https://example.com/mock-qr.png");
+    expect(qrImage).toHaveAttribute("src", expect.stringContaining("qrserver.com"));
+  });
 
-    // Verify job title is shown
-    expect(screen.getByText("مساعد مطبخ")).toBeInTheDocument();
+  it("shows download and refresh actions after QR generation", async () => {
+    vi.spyOn(jobAssignmentsApi, "generateCheckInQR")
+      .mockResolvedValue({ qrToken: "test-token", type: "check_in", expiresAt: new Date(Date.now() + 300000).toISOString() });
 
-    // QR generation now updates the displayed QR state without emitting a toast.
-    expect(screen.getByRole("button", { name: /تحميل/ })).toBeInTheDocument();
-    expect(toast).not.toHaveBeenCalled();
+    const { container } = render(
+      <QRGenerator assignmentId="a1" assignmentStatus="assigned" />,
+      { wrapper: createWrapper() }
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /QR حضور/ }));
+
+    await waitFor(() => {
+      expect(container.querySelector(".lucide-download")).toBeInTheDocument();
+      expect(container.querySelector(".lucide-refresh-cw")).toBeInTheDocument();
+    });
   });
 });
 
 describe("QRScanner Component", () => {
-  it("should render camera start button and manual entry section", () => {
-    render(<QRScanner jobId="j4" />, { wrapper: createWrapper() });
+  it("renders camera button and manual input section", () => {
+    render(<QRScanner />, { wrapper: createWrapper() });
 
-    expect(screen.getByText("فتح الكاميرا")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "فتح الكاميرا" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("لصق بيانات QR هنا...")).toBeInTheDocument();
   });
 
-  it("should trigger camera access when open camera is clicked", async () => {
-    render(<QRScanner jobId="j4" />, { wrapper: createWrapper() });
+  it("starts camera when open camera button is clicked", async () => {
+    render(<QRScanner />, { wrapper: createWrapper() });
 
-    const openCamButton = screen.getByRole("button", { name: "فتح الكاميرا" });
-    fireEvent.click(openCamButton);
+    fireEvent.click(screen.getByRole("button", { name: "فتح الكاميرا" }));
 
     await waitFor(() => {
       expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({
@@ -146,71 +148,120 @@ describe("QRScanner Component", () => {
     expect(screen.getByText("إيقاف")).toBeInTheDocument();
   });
 
-  it("should successfully check in when manual inputs are submitted with valid QR data", async () => {
+  it("calls checkInWithQR on valid manual QR input and shows success", async () => {
     const checkInSpy = vi
-      .spyOn(jobAssignmentsApi, "checkIn")
+      .spyOn(jobAssignmentsApi, "checkInWithQR")
       .mockResolvedValue({
-        id: "ja-new",
-        jobId: "j4",
-        job: { id: "j4", title: "مساعد مطبخ", city: "القاهرة", price: 250 },
-        workerId: "u1",
-        worker: { id: "u1", name: "أحمد المصري", rating: 4.8 },
-        checkInTime: new Date().toISOString(),
-        status: "checked-in",
-        createdAt: new Date().toISOString(),
-      });
+        id: "a1", jobId: "j4", workerId: "u1",
+        status: "checked-in", createdAt: new Date().toISOString(),
+      } as never);
 
-    render(<QRScanner jobId="j4" />, { wrapper: createWrapper() });
+    const onScanComplete = vi.fn();
+    render(<QRScanner onScanComplete={onScanComplete} />, { wrapper: createWrapper() });
 
     const input = screen.getByPlaceholderText("لصق بيانات QR هنا...");
-    const qrData = JSON.stringify({
-      jobId: "j4",
-      timestamp: Date.now(),
-      secret: "sanda-secret",
-    });
+    const qrPayload = JSON.stringify({ assignmentId: "a1", qrToken: "test-token", type: "check_in" });
 
-    fireEvent.change(input, { target: { value: qrData } });
-    const submitBtn = screen.getByRole("button", { name: "تسجيل" });
-    fireEvent.click(submitBtn);
+    fireEvent.change(input, { target: { value: qrPayload } });
+    fireEvent.click(screen.getByRole("button", { name: "تسجيل" }));
 
     await waitFor(() => {
-      expect(checkInSpy).toHaveBeenCalledWith("j4", qrData);
+      expect(checkInSpy).toHaveBeenCalledWith("a1", "test-token");
     });
 
-    // Verify success toast was called
     expect(toast).toHaveBeenCalledWith({
       title: "تم تسجيل الحضور",
       description: "تم تسجيل دخولك بنجاح",
     });
+
+    expect(onScanComplete).toHaveBeenCalledWith(true);
   });
 
-  it("should show error toast if checkIn mutation fails", async () => {
-    const checkInSpy = vi
-      .spyOn(jobAssignmentsApi, "checkIn")
-      .mockRejectedValue(new Error("API Error"));
+  it("calls checkOutWithQR for check_out type and shows success", async () => {
+    const checkOutSpy = vi
+      .spyOn(jobAssignmentsApi, "checkOutWithQR")
+      .mockResolvedValue({
+        id: "a1", jobId: "j4", workerId: "u1",
+        status: "checked-out", createdAt: new Date().toISOString(),
+      } as never);
 
-    render(<QRScanner jobId="j4" />, { wrapper: createWrapper() });
+    const onScanComplete = vi.fn();
+    render(<QRScanner onScanComplete={onScanComplete} />, { wrapper: createWrapper() });
 
     const input = screen.getByPlaceholderText("لصق بيانات QR هنا...");
-    const qrData = JSON.stringify({
-      jobId: "j4",
-      timestamp: Date.now(),
-      secret: "sanda-secret",
-    });
+    const qrPayload = JSON.stringify({ assignmentId: "a1", qrToken: "test-token", type: "check_out" });
 
-    fireEvent.change(input, { target: { value: qrData } });
-    const submitBtn = screen.getByRole("button", { name: "تسجيل" });
-    fireEvent.click(submitBtn);
+    fireEvent.change(input, { target: { value: qrPayload } });
+    fireEvent.click(screen.getByRole("button", { name: "تسجيل" }));
 
     await waitFor(() => {
-      expect(checkInSpy).toHaveBeenCalled();
+      expect(checkOutSpy).toHaveBeenCalledWith("a1", "test-token");
     });
 
-    // Verify failure toast was called
     expect(toast).toHaveBeenCalledWith({
-      title: "خطأ",
-      description: "فشل في تسجيل الحضور",
-      variant: "destructive",
+      title: "تم تسجيل الانصراف",
+      description: "تم تسجيل خروجك بنجاح",
+    });
+
+    expect(onScanComplete).toHaveBeenCalledWith(true);
+  });
+
+  it("shows error toast on failed check-in and calls onScanComplete(false)", async () => {
+    vi.spyOn(jobAssignmentsApi, "checkInWithQR")
+      .mockRejectedValue(new Error("API Error"));
+
+    const onScanComplete = vi.fn();
+    render(<QRScanner onScanComplete={onScanComplete} />, { wrapper: createWrapper() });
+
+    const input = screen.getByPlaceholderText("لصق بيانات QR هنا...");
+    const qrPayload = JSON.stringify({ assignmentId: "a1", qrToken: "bad-token", type: "check_in" });
+
+    fireEvent.change(input, { target: { value: qrPayload } });
+    fireEvent.click(screen.getByRole("button", { name: "تسجيل" }));
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith({
+        title: "خطأ",
+        description: "API Error",
+        variant: "destructive",
+      });
+    });
+
+    expect(onScanComplete).toHaveBeenCalledWith(false);
+  });
+
+  it("disables submit button while pending", async () => {
+    vi.spyOn(jobAssignmentsApi, "checkInWithQR")
+      .mockImplementation(() => new Promise(() => {}));
+
+    render(<QRScanner />, { wrapper: createWrapper() });
+
+    const input = screen.getByPlaceholderText("لصق بيانات QR هنا...");
+    const validQrData = JSON.stringify({ assignmentId: "a1", qrToken: "test-token", type: "check_in" });
+    fireEvent.change(input, { target: { value: validQrData } });
+
+    fireEvent.click(screen.getByRole("button", { name: "تسجيل" }));
+
+    await waitFor(() => {
+      const btn = screen.getByRole("button", { name: "تسجيل" });
+      expect(btn).toBeDisabled();
+    });
+  });
+
+  it("shows error toast for invalid QR data", async () => {
+    render(<QRScanner />, { wrapper: createWrapper() });
+
+    const input = screen.getByPlaceholderText("لصق بيانات QR هنا...");
+    fireEvent.change(input, { target: { value: "invalid-json" } });
+    fireEvent.click(screen.getByRole("button", { name: "تسجيل" }));
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "خطأ",
+          variant: "destructive",
+        })
+      );
     });
   });
 });

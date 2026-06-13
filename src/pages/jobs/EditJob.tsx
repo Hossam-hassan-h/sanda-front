@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LocationPicker from "@/components/LocationPicker";
+import FormSubmitButton from "@/components/common/FormSubmitButton";
 import UserLayout from "@/layouts/UserLayout";
 import { useJob, useUpdateJob, useDeleteJob } from "@/hooks/useJobs";
 import { useAuth } from "@/context/AuthContext";
@@ -234,16 +235,16 @@ export default function EditJob() {
           )}
 
           <div className="flex flex-wrap gap-3 pt-2">
-            <Button
-              type="submit"
+            <FormSubmitButton
               variant="accent"
               size="lg"
-              disabled={updateJob.isPending || !isDirty}
+              pending={updateJob.isPending}
+              pendingLabel="جاري الحفظ..."
+              disabled={!isDirty}
               className={cn(!isDirty && "opacity-60")}
             >
-              {updateJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               حفظ التعديلات
-            </Button>
+            </FormSubmitButton>
             <Button type="button" variant="outline" size="lg" onClick={() => navigate(-1)}>
               إلغاء
             </Button>

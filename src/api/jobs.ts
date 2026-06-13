@@ -1,4 +1,4 @@
-import api, { USE_MOCKS } from "./client";
+﻿import api, { USE_MOCKS } from "./client";
 import { mockApplications, mockJobs, mockRatings } from "@/lib/mock/data";
 import { mockDelay } from "@/lib/mock/utils";
 import type { Application, Job, JobFilters, Rating, UserSummary } from "./types";
@@ -28,10 +28,10 @@ const mapJob = (raw: Record<string, unknown>): Job => {
     hours: (raw.duration as number) ?? (raw.hours as number) ?? 0,
     startDate: (raw.startDate as string) ?? (raw.start_date as string) ?? "",
     endDate: (raw.endDate as string) ?? (raw.end_date as string) ?? undefined,
-    requiredWorkers: (raw.requiredWorkers as number) ?? (raw.requiredWorkers as number) ?? 1,
+    requiredWorkers: (raw.requiredWorkers as number) ?? (raw.required_workers as number) ?? 1,
     status: (raw.status as string) === "in_progress" ? ("in-progress" as const) : (raw.status as Job["status"]),
     employerId: owner?.id as string ?? (raw.employerId as string) ?? "",
-    employer: owner ? mapOwnerToEmployer(owner) : (raw.employer as UserSummary) ?? { id: "", name: "صاحب العمل" },
+    employer: owner ? mapOwnerToEmployer(owner) : (raw.employer as UserSummary) ?? { id: "", name: "ØµØ§Ø­Ø¨ Ø§Ù„Ø¹Ù…Ù„" },
     workerId: raw.workerId as string | undefined,
     worker: raw.worker as UserSummary | undefined,
     applicantsCount: (raw.applicantsCount as number) ?? (raw.acceptedWorkersCount as number) ?? 0,
@@ -115,7 +115,7 @@ export const jobsApi = {
         startDate: payload.startDate ?? new Date().toISOString(),
         status: "open",
         employerId: "u2",
-        employer: { id: "u2", name: "سارة عبدالله", rating: 4.9 },
+        employer: { id: "u2", name: "Ø³Ø§Ø±Ø© Ø¹Ø¨Ø¯Ø§Ù„Ù„Ù‡", rating: 4.9 },
         applicantsCount: 0,
         createdAt: new Date().toISOString(),
       };
@@ -186,7 +186,7 @@ export const jobsApi = {
       return mockDelay({
         id: "a" + Date.now(),
         jobId,
-        worker: { id: "u1", name: "أحمد المصري", rating: 4.8, ratingsCount: 32, city: "القاهرة", skills: [] },
+        worker: { id: "u1", name: "Ø£Ø­Ù…Ø¯ Ø§Ù„Ù…ØµØ±ÙŠ", rating: 4.8, ratingsCount: 32, city: "Ø§Ù„Ù‚Ø§Ù‡Ø±Ø©", skills: [] },
         message,
         status: "pending",
         createdAt: new Date().toISOString(),
@@ -241,3 +241,4 @@ export const jobsApi = {
     return apps.map(mapApplication);
   },
 };
+

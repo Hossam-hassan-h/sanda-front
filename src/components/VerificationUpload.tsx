@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
-import { Upload, CheckCircle2, ShieldCheck, Loader2, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Upload, CheckCircle2, ShieldCheck, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/api/auth";
+import FormSubmitButton from "@/components/common/FormSubmitButton";
 import { USE_MOCKS } from "@/api/client";
 import type { VerificationDocument } from "@/api/types";
 
@@ -254,16 +254,9 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
               icon={User}
             />
 
-            <Button type="submit" className="w-full py-5 font-bold" disabled={uploading}>
-              {uploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  جاري رفع الملفات وتشفيرها...
-                </>
-              ) : (
-                "إرسال المستندات للمراجعة"
-              )}
-            </Button>
+            <FormSubmitButton className="w-full py-5 font-bold" pending={uploading} pendingLabel="جاري رفع الملفات وتشفيرها...">
+              إرسال المستندات للمراجعة
+            </FormSubmitButton>
           </form>
         ) : (
           <div className="text-center py-6 space-y-4">

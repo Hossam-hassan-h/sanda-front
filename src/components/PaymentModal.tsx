@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import FormSubmitButton from "@/components/common/FormSubmitButton";
 import { paymentService } from "@/lib/payment";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -174,10 +175,9 @@ export default function PaymentModal({
               <span>مبلغك مؤمن بالكامل في حساب الضمان، وسيتم نقله للمنفذ فور انتهاء العمل وتأكيد الانصراف.</span>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+            <FormSubmitButton className="w-full" pending={loading} pendingLabel="جاري الدفع...">
               تأكيد ودفع {amount} جنيه
-            </Button>
+            </FormSubmitButton>
           </form>
         )}
 

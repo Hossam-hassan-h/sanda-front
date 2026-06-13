@@ -1,4 +1,4 @@
-import api, { USE_MOCKS } from "./client";
+﻿import api, { USE_MOCKS } from "./client";
 import { mockUsers } from "@/lib/mock/data";
 import { mockDelay } from "@/lib/mock/utils";
 import type { User, UserRole } from "./types";
@@ -76,13 +76,13 @@ export const authApi = {
     return mapUser(data as Record<string, unknown>);
   },
 
-  async updateProfile(id: string, data: Partial<User>): Promise<User> {
+  async updateProfile(userId: string, data: Partial<User>): Promise<User> {
     const payload = { ...data } as Record<string, unknown>;
     if (payload.avatar) {
       payload.profile_image = { url: payload.avatar };
       delete payload.avatar;
     }
-    const { data: res } = await api.put(`/users/profile/${id}`, payload);
+    const { data: res } = await api.put(`/users/profile/${userId}`, payload);
     return mapUser(res as Record<string, unknown>);
   },
 
@@ -130,10 +130,12 @@ export const authApi = {
     return mockDelay(user ?? mockUsers[0]);
   },
 
-  async updatePassword(id: string, payload: { currentPassword: string; newPassword: string }): Promise<void> {
+  async updatePassword(payload: { currentPassword: string; newPassword: string }): Promise<void> {
     if (USE_MOCKS) {
       return mockDelay(undefined);
     }
-    await api.put(`/users/profile/${id}`, { currentPassword: payload.currentPassword, password: payload.newPassword });
+    await api.put(`/auth/change-password`, { currentPassword: payload.currentPassword, newPassword: payload.newPassword });
   },
 };
+
+
