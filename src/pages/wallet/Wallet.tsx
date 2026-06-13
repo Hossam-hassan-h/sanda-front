@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { Wallet as WalletIcon, ArrowDownToLine, ArrowUpFromLine, Clock, CheckCircle2, type LucideIcon } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import type { TransactionType } from "@/api/types";
+import { Pagination } from "@/components/admin/Pagination";
 
 const typeMeta: Record<TransactionType, { label: string; cls: string; sign: string; icon: LucideIcon }> = {
   hold: { label: "محجوز (Escrow)", cls: "text-warning", sign: "", icon: Clock },
@@ -19,6 +21,13 @@ const typeMeta: Record<TransactionType, { label: string; cls: string; sign: stri
 export default function Wallet() {
   const { data: balance, isLoading: bLoading, isError: bError } = useWalletBalance();
   const { data: txs, isLoading: tLoading, isError: tError } = useWalletTransactions();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  const paginatedTxs = useMemo(() => {
+    if (!txs) return [];
+    return txs.slice((page - 1) * pageSize, page * pageSize);
+  }, [txs, page, pageSize]);
 
   return (
     <UserLayout>
@@ -65,28 +74,43 @@ export default function Wallet() {
           {tLoading ? (
             <div className="p-5 space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14" />)}</div>
           ) : (
-            <div className="divide-y divide-border">
-              {txs?.map((t) => {
-                const m = typeMeta[t.transactionType];
-                return (
-                  <div key={t.id} className="p-4 md:p-5 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-muted ${m.cls}`}>
-                        <m.icon className="h-4 w-4" />
+            <>
+              <div className="divide-y divide-border">
+                {paginatedTxs?.map((t) => {
+                  const m = typeMeta[t.transactionType];
+                  return (
+                    <div key={t.id} className="p-4 md:p-5 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-muted ${m.cls}`}>
+                          <m.icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{t.jobTitle ?? m.label}</div>
+                          <div className="text-xs text-muted-foreground">{new Date(t.createdAt).toLocaleDateString("ar-EG", { dateStyle: "medium" })} — {m.label}</div>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{t.jobTitle ?? m.label}</div>
-                        <div className="text-xs text-muted-foreground">{new Date(t.createdAt).toLocaleDateString("ar-EG", { dateStyle: "medium" })} — {m.label}</div>
+                      <div className="text-end">
+                        <div className={`font-heading font-bold ${m.cls}`}>{m.sign}{t.amount} ج</div>
+                        {t.paymentStatus === "pending" && <Badge variant="outline" className="text-xs">قيد المعالجة</Badge>}
                       </div>
                     </div>
-                    <div className="text-end">
-                      <div className={`font-heading font-bold ${m.cls}`}>{m.sign}{t.amount} ج</div>
-                      {t.paymentStatus === "pending" && <Badge variant="outline" className="text-xs">قيد المعالجة</Badge>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              {txs && txs.length > 0 && (
+                <Pagination
+                  currentPage={page}
+                  totalPages={Math.max(1, Math.ceil(txs.length / pageSize))}
+                  totalItems={txs.length}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
       </div>

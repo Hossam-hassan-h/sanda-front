@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Clock, MapPin, QrCode, CheckCircle, XCircle, Hourglass } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import RatingForm from "@/components/RatingForm";
 import ReportForm from "@/components/ReportForm";
 import type { JobAssignment, Application } from "@/api/types";
+import { Pagination } from "@/components/admin/Pagination";
 
 const applicationBadge: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: typeof Clock; label: string }> = {
   pending: { variant: "secondary", icon: Hourglass, label: "قيد المراجعة" },
@@ -25,6 +26,13 @@ export default function WorkerJobs() {
   const { data: allJobs, isLoading: jobsLoading } = useJobs({});
   const { data: applications, isLoading: appsLoading } = useMyApplications();
   const { data: assignments, isLoading: assignmentsLoading } = useMyAssignments();
+  const [activeTab, setActiveTab] = useState<string>("active");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab]);
 
   const isLoading = jobsLoading || appsLoading || assignmentsLoading;
 
@@ -52,6 +60,22 @@ export default function WorkerJobs() {
     });
   }, [assignments, acceptedJobs, user]);
 
+  const paginatedActiveJobs = useMemo(() => {
+    return activeJobs.slice((page - 1) * pageSize, page * pageSize);
+  }, [activeJobs, page, pageSize]);
+
+  const paginatedCompletedJobs = useMemo(() => {
+    return completedJobs.slice((page - 1) * pageSize, page * pageSize);
+  }, [completedJobs, page, pageSize]);
+
+  const paginatedPendingJobs = useMemo(() => {
+    return pendingJobs.slice((page - 1) * pageSize, page * pageSize);
+  }, [pendingJobs, page, pageSize]);
+
+  const paginatedRejectedJobs = useMemo(() => {
+    return rejectedJobs.slice((page - 1) * pageSize, page * pageSize);
+  }, [rejectedJobs, page, pageSize]);
+
   const getAssignmentForJob = (jobId: string): JobAssignment | undefined => {
     return assignments?.find((a) => a.jobId === jobId && a.workerId === user?.id);
   };
@@ -77,7 +101,7 @@ export default function WorkerJobs() {
           <p className="text-muted-foreground">الوظائف اللي تقدمت ليها وتابع حالتها</p>
         </div>
 
-        <Tabs defaultValue="active">
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val)}>
           <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="active">قيد التنفيذ ({activeJobs.length})</TabsTrigger>
             <TabsTrigger value="completed">مكتملة ({completedJobs.length})</TabsTrigger>
@@ -92,8 +116,8 @@ export default function WorkerJobs() {
                 {[1, 2].map((i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
               </div>
             ) : activeJobs.length > 0 ? (
-              <div className="space-y-4">
-                {activeJobs.map(({ job }) => {
+              <div className="space-y-4 mb-4">
+                {paginatedActiveJobs.map(({ job }) => {
                   const assignment = getAssignmentForJob(job.id);
                   return (
                     <Card key={job.id} className="hover:shadow-md transition-shadow">
@@ -162,6 +186,19 @@ export default function WorkerJobs() {
                   );
                 })}
               </div>
+              {activeJobs.length > 0 && (
+                <Pagination
+                  currentPage={page}
+                  totalPages={Math.max(1, Math.ceil(activeJobs.length / pageSize))}
+                  totalItems={activeJobs.length}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                />
+              )}
             ) : (
               <div className="text-center py-20">
                 <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
@@ -185,8 +222,8 @@ export default function WorkerJobs() {
                 {[1, 2].map((i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
               </div>
             ) : completedJobs.length > 0 ? (
-              <div className="space-y-4">
-                {completedJobs.map(({ job }) => {
+              <div className="space-y-4 mb-4">
+                {paginatedCompletedJobs.map(({ job }) => {
                   const assignment = getAssignmentForJob(job.id);
                   return (
                     <Card key={job.id} className="hover:shadow-md transition-shadow">
@@ -243,6 +280,19 @@ export default function WorkerJobs() {
                   );
                 })}
               </div>
+              {completedJobs.length > 0 && (
+                <Pagination
+                  currentPage={page}
+                  totalPages={Math.max(1, Math.ceil(completedJobs.length / pageSize))}
+                  totalItems={completedJobs.length}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                />
+              )}
             ) : (
               <div className="text-center py-20">
                 <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
@@ -266,8 +316,8 @@ export default function WorkerJobs() {
                 {[1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
               </div>
             ) : pendingJobs.length > 0 ? (
-              <div className="space-y-4">
-                {pendingJobs.map(({ job, application }) => {
+              <div className="space-y-4 mb-4">
+                {paginatedPendingJobs.map(({ job, application }) => {
                   const cfg = applicationBadge[application.status];
                   const Icon = cfg.icon;
                   return (
@@ -300,6 +350,19 @@ export default function WorkerJobs() {
                   );
                 })}
               </div>
+              {pendingJobs.length > 0 && (
+                <Pagination
+                  currentPage={page}
+                  totalPages={Math.max(1, Math.ceil(pendingJobs.length / pageSize))}
+                  totalItems={pendingJobs.length}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                />
+              )}
             ) : (
               <div className="text-center py-20 text-muted-foreground">
                 <Hourglass className="h-12 w-12 mx-auto mb-4 opacity-30" />
@@ -311,8 +374,8 @@ export default function WorkerJobs() {
           {/* ── Rejected ── */}
           <TabsContent value="rejected">
             {rejectedJobs.length > 0 ? (
-              <div className="space-y-4">
-                {rejectedJobs.map(({ job, application }) => {
+              <div className="space-y-4 mb-4">
+                {paginatedRejectedJobs.map(({ job, application }) => {
                   const cfg = applicationBadge[application.status];
                   const Icon = cfg.icon;
                   return (
@@ -344,6 +407,19 @@ export default function WorkerJobs() {
                   );
                 })}
               </div>
+              {rejectedJobs.length > 0 && (
+                <Pagination
+                  currentPage={page}
+                  totalPages={Math.max(1, Math.ceil(rejectedJobs.length / pageSize))}
+                  totalItems={rejectedJobs.length}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                />
+              )}
             ) : (
               <div className="text-center py-20 text-muted-foreground">
                 <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500 opacity-30" />

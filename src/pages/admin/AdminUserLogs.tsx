@@ -11,6 +11,7 @@ import { userLogsApi } from "@/api/userLogs";
 import { usersApi } from "@/services/api/admin-api";
 import { cn } from "@/lib/utils";
 import type { UserLog, User } from "@/api/types";
+import { Pagination } from "@/components/admin/Pagination";
 
 const TARGET_TYPES = [
   { value: "all", label: "كل الأهداف" },
@@ -46,6 +47,8 @@ export default function AdminUserLogs() {
   const [logs, setLogs] = useState<UserLog[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     Promise.all([
@@ -71,6 +74,15 @@ export default function AdminUserLogs() {
       return matchQ && matchU && matchT;
     });
   }, [query, userId, targetType, logs, users]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, userId, targetType]);
+
+  const paginatedLogs = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   const totalLogs = logs.length;
   const uniqueUsers = new Set(logs.map((l) => l.userId)).size;
@@ -179,7 +191,7 @@ export default function AdminUserLogs() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {filtered.map((l) => {
+                    {paginatedLogs.map((l) => {
                       const user = users.find((u) => u.id === l.userId);
                       const meta = ACTION_META[l.action] ?? FALLBACK_ACTION;
                       return (
@@ -208,7 +220,7 @@ export default function AdminUserLogs() {
 
               {/* Mobile cards */}
               <div className="block md:hidden p-4 space-y-3">
-                {filtered.map((l) => {
+                {paginatedLogs.map((l) => {
                   const user = users.find((u) => u.id === l.userId);
                   const meta = ACTION_META[l.action] ?? FALLBACK_ACTION;
                   return (
@@ -233,6 +245,20 @@ export default function AdminUserLogs() {
                   );
                 })}
               </div>
+
+              {filtered.length > 0 && (
+                <Pagination
+                  currentPage={page}
+                  totalPages={Math.max(1, Math.ceil(filtered.length / pageSize))}
+                  totalItems={filtered.length}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                />
+              )}
             </>
           )}
         </CardContent>

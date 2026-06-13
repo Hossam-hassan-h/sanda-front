@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Users, QrCode, CalendarCheck, Eye, Clock, AlertTriangle } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import type { JobStatus, Job } from "@/api/types";
+import { Pagination } from "@/components/admin/Pagination";
 
 const tabs: { key: JobStatus | "all"; label: string }[] = [
   { key: "all", label: "الكل" },
@@ -98,6 +99,9 @@ function EmployerJobCard({ job }: { job: Job }) {
 
 export default function MyJobs() {
   const { data: jobs, isLoading, isError } = useMyJobs();
+  const [activeTab, setActiveTab] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
 
   const filteredByTab = useMemo(() => {
     if (!jobs) return {} as Record<JobStatus | "all", Job[]>;
@@ -114,6 +118,10 @@ export default function MyJobs() {
     return result;
   }, [jobs]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab]);
+
   return (
     <UserLayout>
       <div className="container mx-auto px-4 md:px-6 py-10">
@@ -127,7 +135,7 @@ export default function MyJobs() {
           </Button>
         </div>
 
-        <Tabs defaultValue="all">
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val)}>
           <TabsList>
             {tabs.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
           </TabsList>
@@ -145,9 +153,26 @@ export default function MyJobs() {
                   {[1, 2, 3].map((i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
                 </div>
               ) : (filteredByTab[t.key]?.length ?? 0) > 0 ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {filteredByTab[t.key]!.map((j) => <EmployerJobCard key={j.id} job={j} />)}
-                </div>
+                <>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+                    {filteredByTab[t.key]!
+                      .slice((page - 1) * pageSize, page * pageSize)
+                      .map((j) => <EmployerJobCard key={j.id} job={j} />)}
+                  </div>
+                  {filteredByTab[t.key]!.length > 0 && (
+                    <Pagination
+                      currentPage={page}
+                      totalPages={Math.max(1, Math.ceil(filteredByTab[t.key]!.length / pageSize))}
+                      totalItems={filteredByTab[t.key]!.length}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setPage(1);
+                      }}
+                    />
+                  )}
+                </>
               ) : (
                 <div className="text-center py-16 text-muted-foreground">
                   {t.key === "all" ? (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Bell, Briefcase, Check, Flag, Filter, Info, MessageCircle, ShieldCheck, User } from "lucide-react";
 import AdminLayout from "@/layouts/AdminLayout";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Pagination } from "@/components/admin/Pagination";
 
 const typeConfig: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
   job: { icon: <Briefcase className="w-4 h-4" />, label: "وظائف", color: "bg-blue-100 text-blue-700" },
@@ -54,11 +55,21 @@ export default function NotificationsPage() {
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const unreadCount = unreadCountData?.unreadCount ?? unreadCountData?.unread_count ?? 0;
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filtered = useMemo(() => {
     if (!notifications) return [];
     return typeFilter === "all" ? notifications : notifications.filter((n) => n.type === typeFilter);
   }, [notifications, typeFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [typeFilter]);
+
+  const paginatedNotifs = useMemo(() => {
+    return filtered.slice((page - 1) * pageSize, page * pageSize);
+  }, [filtered, page, pageSize]);
 
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.isRead) {
@@ -165,38 +176,53 @@ export default function NotificationsPage() {
             <AlertDescription>حدث خطأ أثناء جلب البيانات. يرجى المحاولة مرة أخرى.</AlertDescription>
           </Alert>
         ) : filtered.length > 0 ? (
-          <div className="space-y-2">
-            {filtered.map((notification) => {
-              const config = typeConfig[notification.type] || typeConfig.system;
-              return (
-                <button
-                  key={notification.id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={cn(
-                    "w-full flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md text-start",
-                    !notification.isRead ? "bg-blue-50/70 border-blue-200/60" : "bg-card border-border",
-                  )}
-                >
-                  <span className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", config.color)}>
-                    {config.icon}
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="flex items-start justify-between gap-2">
-                      <span>
-                        <span className="block font-medium">{notification.title}</span>
-                        <span className="block text-sm text-muted-foreground mt-1">{notification.message}</span>
+          <>
+            <div className="space-y-2 mb-6">
+              {paginatedNotifs.map((notification) => {
+                const config = typeConfig[notification.type] || typeConfig.system;
+                return (
+                  <button
+                    key={notification.id}
+                    onClick={() => handleNotificationClick(notification)}
+                    className={cn(
+                      "w-full flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md text-start",
+                      !notification.isRead ? "bg-blue-50/70 border-blue-200/60" : "bg-card border-border",
+                    )}
+                  >
+                    <span className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", config.color)}>
+                      {config.icon}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-start justify-between gap-2">
+                        <span>
+                          <span className="block font-medium">{notification.title}</span>
+                          <span className="block text-sm text-muted-foreground mt-1">{notification.message}</span>
+                        </span>
+                        {!notification.isRead && <span className="w-2.5 h-2.5 bg-primary rounded-full shrink-0 mt-1.5" />}
                       </span>
-                      {!notification.isRead && <span className="w-2.5 h-2.5 bg-primary rounded-full shrink-0 mt-1.5" />}
+                      <span className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-[10px]">{config.label}</Badge>
+                        <span className="text-xs text-muted-foreground">{formatNotifDate(notification.createdAt)}</span>
+                      </span>
                     </span>
-                    <span className="flex items-center gap-2 mt-2">
-                      <Badge variant="outline" className="text-[10px]">{config.label}</Badge>
-                      <span className="text-xs text-muted-foreground">{formatNotifDate(notification.createdAt)}</span>
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+            {filtered.length > 0 && (
+              <Pagination
+                currentPage={page}
+                totalPages={Math.max(1, Math.ceil(filtered.length / pageSize))}
+                totalItems={filtered.length}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(1);
+                }}
+              />
+            )}
+          </>
         ) : (
           <div className="text-center py-20">
             <Bell className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
