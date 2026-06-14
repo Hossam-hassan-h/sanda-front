@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from "react";
-import { authApi, type LoginPayload, type RegisterPayload } from "@/api/auth";
+import { authApi, type LoginPayload, type RegisterPayload, type RegisterResponse } from "@/api/auth";
 import type { User, UserRole } from "@/api/types";
 
 interface AuthContextValue {
@@ -7,7 +7,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (payload: LoginPayload) => Promise<User>;
-  register: (payload: RegisterPayload) => Promise<{ message: string; userId: string }>;
+  register: (payload: RegisterPayload) => Promise<RegisterResponse>;
   loginFromVerification: (user: User, token: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
@@ -64,13 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (payload: RegisterPayload) => {
     setIsLoading(true);
     try {
-      const result = await authApi.register(payload);
-      // Backend returns { message, userId } — user must verify email via OTP before getting a token
-      return result as unknown as { message: string; userId: string };
+      return await authApi.register(payload);
     } finally {
       setIsLoading(false);
     }
-  }, [setIsLoading]);
+  }, []);
 
   const logout = useCallback(() => {
     persist(null);

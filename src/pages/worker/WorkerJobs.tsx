@@ -116,6 +116,7 @@ export default function WorkerJobs() {
                 {[1, 2].map((i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
               </div>
             ) : activeJobs.length > 0 ? (
+              <>
               <div className="space-y-4 mb-4">
                 {paginatedActiveJobs.map(({ job }) => {
                   const assignment = getAssignmentForJob(job.id);
@@ -199,6 +200,7 @@ export default function WorkerJobs() {
                   }}
                 />
               )}
+              </>
             ) : (
               <div className="text-center py-20">
                 <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
@@ -222,6 +224,7 @@ export default function WorkerJobs() {
                 {[1, 2].map((i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
               </div>
             ) : completedJobs.length > 0 ? (
+              <>
               <div className="space-y-4 mb-4">
                 {paginatedCompletedJobs.map(({ job }) => {
                   const assignment = getAssignmentForJob(job.id);
@@ -293,6 +296,7 @@ export default function WorkerJobs() {
                   }}
                 />
               )}
+              </>
             ) : (
               <div className="text-center py-20">
                 <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
@@ -316,6 +320,7 @@ export default function WorkerJobs() {
                 {[1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
               </div>
             ) : pendingJobs.length > 0 ? (
+              <>
               <div className="space-y-4 mb-4">
                 {paginatedPendingJobs.map(({ job, application }) => {
                   const cfg = applicationBadge[application.status];
@@ -363,6 +368,7 @@ export default function WorkerJobs() {
                   }}
                 />
               )}
+              </>
             ) : (
               <div className="text-center py-20 text-muted-foreground">
                 <Hourglass className="h-12 w-12 mx-auto mb-4 opacity-30" />
@@ -374,6 +380,7 @@ export default function WorkerJobs() {
           {/* ── Rejected ── */}
           <TabsContent value="rejected">
             {rejectedJobs.length > 0 ? (
+              <>
               <div className="space-y-4 mb-4">
                 {paginatedRejectedJobs.map(({ job, application }) => {
                   const cfg = applicationBadge[application.status];
@@ -420,6 +427,7 @@ export default function WorkerJobs() {
                   }}
                 />
               )}
+              </>
             ) : (
               <div className="text-center py-20 text-muted-foreground">
                 <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500 opacity-30" />

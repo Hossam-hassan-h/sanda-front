@@ -1,200 +1,175 @@
-import { useState } from "react";
-import { CreditCard, ShieldCheck, Landmark, CheckCircle, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import { CreditCard, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import FormSubmitButton from "@/components/common/FormSubmitButton";
-import { paymentService } from "@/lib/payment";
+import { paymentService, type ApplicationPaymentIntent } from "@/lib/payment";
 import { toast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
 
 interface PaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  jobId: string;
+  applicationId: string | null;
   jobTitle: string;
   amount: number;
   onSuccess?: () => void;
 }
 
+function PaymentForm({
+  payment,
+  onSuccess,
+}: {
+  payment: ApplicationPaymentIntent;
+  onSuccess?: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!stripe || !elements) return;
+
+    setIsSubmitting(true);
+    const result = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+    });
+
+    if (result.error) {
+      toast({
+        title: "Payment failed",
+        description: result.error.message || "Please check your payment details.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    const paymentIntentId = result.paymentIntent?.id || payment.paymentIntentId;
+    await paymentService.syncPaymentIntent(paymentIntentId);
+
+    toast({
+      title: "Payment secured",
+      description: "The job amount and platform fee are now held in escrow.",
+    });
+    setIsSubmitting(false);
+    onSuccess?.();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement />
+      <Button type="submit" className="w-full" disabled={!stripe || isSubmitting}>
+        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+        Pay {payment.totalAmount} {payment.currency.toUpperCase()}
+      </Button>
+    </form>
+  );
+}
+
 export default function PaymentModal({
   open,
   onOpenChange,
-  jobId,
+  applicationId,
   jobTitle,
   amount,
   onSuccess,
 }: PaymentModalProps) {
-  const [gateway, setGateway] = useState<"stripe" | "paymob">("stripe");
-  const [loading, setLoading] = useState(false);
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvc, setCvc] = useState("");
-  const [paymentStep, setPaymentStep] = useState<"select" | "card" | "success">("select");
+  const [payment, setPayment] = useState<ApplicationPaymentIntent | null>(null);
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handlePayInit = async () => {
-    setLoading(true);
-    try {
-      await paymentService.createPaymentSession({ amount, jobId, gateway });
-      setPaymentStep("card");
-    } catch {
-      toast({
-        title: "خطأ",
-        description: "فشل في إطلاق جلسة الدفع",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!open || !applicationId) return;
 
-  const handlePayComplete = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // Simulate verifying payment
-      await paymentService.verifyPayment("pay_mock_" + Date.now());
-      setPaymentStep("success");
-      toast({
-        title: "تم الدفع بنجاح",
-        description: `تم إيداع مبلغ ${amount} جنيه في حساب الضمان (Escrow).`,
+    let isMounted = true;
+    setIsLoading(true);
+    setPayment(null);
+
+    paymentService
+      .createApplicationPaymentIntent(applicationId)
+      .then((intent) => {
+        if (!isMounted) return;
+        const publishableKey = intent.publishableKey || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+        if (!publishableKey) {
+          throw new Error("Stripe publishable key is missing.");
+        }
+        setPayment(intent);
+        setStripePromise(loadStripe(publishableKey));
+      })
+      .catch((error) => {
+        toast({
+          title: "Payment setup failed",
+          description: error instanceof Error ? error.message : "Please try again.",
+          variant: "destructive",
+        });
+        onOpenChange(false);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
       });
-      onSuccess?.();
-    } catch {
-      toast({
-        title: "خطأ في الدفع",
-        description: "يرجى التحقق من بيانات بطاقتك والمحاولة مرة أخرى",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+
+    return () => {
+      isMounted = false;
+    };
+  }, [applicationId, onOpenChange, open]);
+
+  const options = useMemo(
+    () => (payment ? { clientSecret: payment.clientSecret } : undefined),
+    [payment],
+  );
+
+  const fee = payment?.platformFee ?? Math.round(amount * 0.05 * 100) / 100;
+  const total = payment?.totalAmount ?? Math.round((amount + fee) * 100) / 100;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full" dir="rtl">
+      <DialogContent className="max-w-md w-full">
         <DialogHeader>
-          <DialogTitle className="text-center font-bold text-lg flex items-center gap-2 justify-center">
-            <ShieldCheck className="w-5 h-5 text-primary" />
-            تأمين مبلغ الوظيفة (Escrow)
+          <DialogTitle className="flex items-center justify-center gap-2 text-lg">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            Secure escrow payment
           </DialogTitle>
         </DialogHeader>
 
-        {paymentStep === "select" && (
-          <div className="space-y-4 py-3 text-right">
-            <div className="bg-muted/40 p-4 rounded-xl space-y-1">
-              <span className="text-xs text-muted-foreground">الوظيفة:</span>
-              <p className="font-semibold text-foreground">{jobTitle}</p>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                <span className="text-sm font-semibold">المبلغ المطلوب تأمينه:</span>
-                <span className="text-lg font-black text-primary">{amount} جنيه</span>
-              </div>
+        <div className="space-y-4">
+          <div className="rounded-lg border bg-muted/40 p-4 text-sm">
+            <div className="font-semibold">{jobTitle}</div>
+            <div className="mt-3 flex justify-between">
+              <span>Job price</span>
+              <strong>{amount}</strong>
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold">اختر وسيلة الدفع</label>
-              <RadioGroup
-                defaultValue="stripe"
-                value={gateway}
-                onValueChange={(val) => setGateway(val as "stripe" | "paymob")}
-                className="grid grid-cols-2 gap-3"
-              >
-                <div>
-                  <RadioGroupItem value="stripe" id="stripe" className="peer sr-only" />
-                  <Label
-                    htmlFor="stripe"
-                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                  >
-                    <CreditCard className="mb-2 h-6 w-6 text-primary" />
-                    <span>البطاقات الائتمانية (Stripe)</span>
-                  </Label>
-                </div>
-                <div>
-                  <RadioGroupItem value="paymob" id="paymob" className="peer sr-only" />
-                  <Label
-                    htmlFor="paymob"
-                    className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                  >
-                    <Landmark className="mb-2 h-6 w-6 text-primary" />
-                    <span>محافظ الهاتف (Paymob)</span>
-                  </Label>
-                </div>
-              </RadioGroup>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Platform fee (5%)</span>
+              <span>{fee}</span>
             </div>
-
-            <Button onClick={handlePayInit} className="w-full mt-2" disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              متابعة للدفع الآمن
-            </Button>
+            <div className="mt-2 flex justify-between border-t pt-2">
+              <span>Total</span>
+              <strong className="text-primary">{total}</strong>
+            </div>
           </div>
-        )}
 
-        {paymentStep === "card" && (
-          <form onSubmit={handlePayComplete} className="space-y-4 py-3 text-right">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">رقم البطاقة</Label>
-              <Input
-                type="text"
-                placeholder="4000 1234 5678 9010"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(e.target.value)}
-                required
-                className="text-left font-mono"
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Preparing payment
+            </div>
+          )}
+
+          {stripePromise && options && payment && (
+            <Elements stripe={stripePromise} options={options}>
+              <PaymentForm
+                payment={payment}
+                onSuccess={() => {
+                  onSuccess?.();
+                  onOpenChange(false);
+                }}
               />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">تاريخ الانتهاء</Label>
-                <Input
-                  type="text"
-                  placeholder="MM/YY"
-                  value={expiry}
-                  onChange={(e) => setExpiry(e.target.value)}
-                  required
-                  className="text-left font-mono"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">CVC</Label>
-                <Input
-                  type="password"
-                  placeholder="***"
-                  maxLength={3}
-                  value={cvc}
-                  onChange={(e) => setCvc(e.target.value)}
-                  required
-                  className="text-left font-mono"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 p-3 rounded-lg bg-emerald-50 border border-emerald-100 text-[11px] text-emerald-800">
-              <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>مبلغك مؤمن بالكامل في حساب الضمان، وسيتم نقله للمنفذ فور انتهاء العمل وتأكيد الانصراف.</span>
-            </div>
-
-            <FormSubmitButton className="w-full" pending={loading} pendingLabel="جاري الدفع...">
-              تأكيد ودفع {amount} جنيه
-            </FormSubmitButton>
-          </form>
-        )}
-
-        {paymentStep === "success" && (
-          <div className="text-center py-6 space-y-4 text-right">
-            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle className="w-10 h-10 text-emerald-600 animate-bounce" />
-            </div>
-            <div className="space-y-1 text-center">
-              <h3 className="text-lg font-bold text-foreground">تمت العملية بنجاح</h3>
-              <p className="text-sm text-muted-foreground">تم حجز قيمة الوظيفة في حساب الضمان سندة.</p>
-            </div>
-            <Button onClick={() => onOpenChange(false)} className="w-full">
-              حسناً
-            </Button>
-          </div>
-        )}
+            </Elements>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -7,7 +7,58 @@ export interface PaymentDetails {
   gateway: "stripe" | "paymob";
 }
 
+export interface ApplicationPaymentIntent {
+  paymentId: string;
+  paymentIntentId: string;
+  clientSecret: string;
+  publishableKey?: string;
+  application: string;
+  assignment: string;
+  job: string;
+  worker: string;
+  employer: string;
+  jobAmount: number;
+  platformFee: number;
+  totalAmount: number;
+  currency: string;
+  status: string;
+}
+
 export const paymentService = {
+  async createApplicationPaymentIntent(applicationId: string): Promise<ApplicationPaymentIntent> {
+    if (!USE_MOCKS) {
+      const { data } = await api.post(`/payments/applications/${applicationId}/payment-intent`);
+      return data as ApplicationPaymentIntent;
+    }
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          paymentId: `pay_${Date.now()}`,
+          paymentIntentId: `pi_mock_${Date.now()}`,
+          clientSecret: "mock_secret",
+          application: applicationId,
+          assignment: `asg_${Date.now()}`,
+          job: "",
+          worker: "",
+          employer: "",
+          jobAmount: 100,
+          platformFee: 5,
+          totalAmount: 105,
+          currency: "egp",
+          status: "PENDING_PAYMENT",
+        });
+      }, 400);
+    });
+  },
+
+  async syncPaymentIntent(paymentIntentId: string) {
+    if (!USE_MOCKS) {
+      const { data } = await api.post(`/payments/payment-intents/${paymentIntentId}/sync`);
+      return data;
+    }
+    return { status: "FUNDS_HELD" };
+  },
+
   async createPaymentSession(details: PaymentDetails): Promise<{ sessionUrl: string; paymentId: string }> {
     if (!USE_MOCKS) {
       try { const { data } = await api.post("/payments/create-session", details); return data; } catch { /* fallback */ }

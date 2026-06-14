@@ -66,6 +66,7 @@ export interface User {
   avatar?: string;        // maps to ERD profile_image
   walletBalance: number;  // maps to ERD Wallets.balance (denormalized)
   isVerified: boolean;
+  confirmedMail?: boolean;
   isActive?: boolean;     // maps to ERD is_active
   rating?: number;
   ratingsCount?: number;
@@ -155,7 +156,10 @@ export interface JobAssignment {
   checkedInAt?: string | null;
   checkedOutAt?: string | null;
   completedAt?: string | null;
-  status: "assigned" | "in_progress" | "completed" | "cancelled" | "checked-in" | "checked-out" | "no-show";
+  refundDeadline?: string | null;
+  marketplaceStatus?: "PENDING_PAYMENT" | "FUNDS_HELD" | "CHECKED_IN" | "REFUND_WINDOW_ACTIVE" | "REFUNDED" | "COMPLETED" | "RELEASED";
+  payment?: string | null;
+  status: "assigned" | "in_progress" | "completed" | "cancelled" | "no_show" | "checked-in" | "checked-out" | "no-show";
   createdAt: string;
 }
 
@@ -248,6 +252,8 @@ export interface Report {
   status: "open" | "reviewed" | "closed";
   createdAt: string;
   jobId?: string;
+  assignmentId?: string;
+  assignment?: JobAssignment | string | null;
   job?: JobSummary;
 }
 
@@ -370,6 +376,7 @@ export interface CreateReportPayload {
   reportedUserId: string;
   reason: string;
   jobId?: string;
+  assignmentId?: string;
 }
 
 export interface SendMessagePayload {
