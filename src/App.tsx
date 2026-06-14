@@ -13,6 +13,10 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 const Landing = lazy(() => import("./pages/Landing"));
 const Login = lazy(() => import("./pages/auth/Login"));
 const Register = lazy(() => import("./pages/auth/Register"));
+const VerifyEmail = lazy(() => import("./pages/auth/VerifyEmail"));
+const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
+const VerifyOtp = lazy(() => import("./pages/auth/VerifyOtp"));
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
 const JobsFeed = lazy(() => import("./pages/jobs/JobsFeed"));
 const JobDetails = lazy(() => import("./pages/jobs/JobDetails"));
 const PostJob = lazy(() => import("./pages/jobs/PostJob"));
@@ -48,12 +52,6 @@ const AdminUserDetail = lazy(() => import("./pages/admin/AdminUserDetail"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 
 const NotFound = lazy(() => import("./pages/NotFound"));
-
-// Auth flow pages
-const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
-const VerifyOtp = lazy(() => import("./pages/auth/VerifyOtp"));
-const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
-const VerifyEmail = lazy(() => import("./pages/auth/VerifyEmail"));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
@@ -107,12 +105,12 @@ const App = () => (
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
-            <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
-            <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/verify-email" element={<PublicOnlyRoute><VerifyEmail /></PublicOnlyRoute>} />
             <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPassword /></PublicOnlyRoute>} />
             <Route path="/verify-otp" element={<PublicOnlyRoute><VerifyOtp /></PublicOnlyRoute>} />
             <Route path="/reset-password" element={<PublicOnlyRoute><ResetPassword /></PublicOnlyRoute>} />
-            <Route path="/verify-email" element={<PublicOnlyRoute><VerifyEmail /></PublicOnlyRoute>} />
             <Route path="/help" element={<Help />} />
             <Route path="/about" element={<About />} />
             <Route path="/terms" element={<Terms />} />

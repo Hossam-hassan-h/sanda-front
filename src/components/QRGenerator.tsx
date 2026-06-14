@@ -1,23 +1,28 @@
 import { useState } from "react";
 import { RefreshCw, CheckCircle, Download, AlertTriangle, Clock, LogOut } from "lucide-react";
-import { useGenerateCheckInQR, useGenerateCheckOutQR } from "@/hooks/useJobAssignments";
+import { useGenerateCheckInQR, useGenerateCheckOutQR, useRefundAssignment } from "@/hooks/useJobAssignments";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
+import ReportForm from "@/components/ReportForm";
 
 interface QRGeneratorProps {
   assignmentId: string;
   assignmentStatus?: string;
+  marketplaceStatus?: string;
+  refundDeadline?: string | null;
+  workerId?: string;
   workerName?: string;
 }
 
-export default function QRGenerator({ assignmentId, assignmentStatus, workerName }: QRGeneratorProps) {
+export default function QRGenerator({ assignmentId, assignmentStatus, marketplaceStatus, refundDeadline, workerId, workerName }: QRGeneratorProps) {
   const [qrImage, setQrImage] = useState<string>("");
   const [qrType, setQrType] = useState<"check_in" | "check_out">("check_in");
   const generateCheckInQR = useGenerateCheckInQR();
   const generateCheckOutQR = useGenerateCheckOutQR();
-  const isPending = generateCheckInQR.isPending || generateCheckOutQR.isPending;
+  const refundAssignment = useRefundAssignment();
+  const isPending = generateCheckInQR.isPending || generateCheckOutQR.isPending || refundAssignment.isPending;
 
   const handleGenerate = async (type: "check_in" | "check_out") => {
     try {
@@ -43,6 +48,7 @@ export default function QRGenerator({ assignmentId, assignmentStatus, workerName
 
   const hasCheckedIn = assignmentStatus === "checked-in" || assignmentStatus === "checked-out";
   const hasCheckedOut = assignmentStatus === "checked-out";
+  const refundWindowActive = marketplaceStatus === "REFUND_WINDOW_ACTIVE";
 
   if (hasCheckedOut) {
     return (
@@ -98,6 +104,44 @@ export default function QRGenerator({ assignmentId, assignmentStatus, workerName
                 QR انصراف
               </Button>
             )}
+          </div>
+        )}
+
+        {refundWindowActive && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+            <div className="mb-2 text-amber-800">
+              Refund available until {refundDeadline ? new Date(refundDeadline).toLocaleTimeString() : "deadline"}
+            </div>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={async () => {
+                try {
+                  await refundAssignment.mutateAsync(assignmentId);
+                  toast({ title: "Refund processed" });
+                } catch (err) {
+                  toast({
+                    title: "Refund failed",
+                    description: err instanceof Error ? err.message : "Please try again.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={isPending}
+            >
+              Refund employer
+            </Button>
+          </div>
+        )}
+
+        {workerId && !hasCheckedOut && (
+          <div className="mt-3 flex justify-center">
+            <ReportForm
+              reportedUserId={workerId}
+              reportedUserName={workerName}
+              assignmentId={assignmentId}
+              trigger={<Button size="sm" variant="outline">Report absence</Button>}
+            />
           </div>
         )}
       </CardContent>

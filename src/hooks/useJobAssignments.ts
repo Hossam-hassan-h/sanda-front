@@ -7,6 +7,7 @@ export const useJobAssignments = (jobId: string) =>
     queryKey: ["assignments", "job", jobId],
     queryFn: () => jobAssignmentsApi.listByJob(jobId),
     enabled: !!jobId,
+    refetchInterval: 15000,
   });
 
 /** Get current worker's assignments */
@@ -14,6 +15,7 @@ export const useMyAssignments = () =>
   useQuery({
     queryKey: ["assignments", "mine"],
     queryFn: () => jobAssignmentsApi.myAssignments(),
+    refetchInterval: 15000,
   });
 
 /** Get a single assignment */
@@ -22,6 +24,7 @@ export const useAssignment = (id: string) =>
     queryKey: ["assignments", id],
     queryFn: () => jobAssignmentsApi.get(id),
     enabled: !!id,
+    refetchInterval: 15000,
   });
 
 /** Generate check-in QR token for an assignment */
@@ -83,6 +86,19 @@ export const useMarkNoShow = () => {
     mutationFn: (assignmentId: string) => jobAssignmentsApi.markNoShow(assignmentId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["assignments"] });
+    },
+  });
+};
+
+/** Refund during active refund window */
+export const useRefundAssignment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (assignmentId: string) => jobAssignmentsApi.refund(assignmentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assignments"] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      qc.invalidateQueries({ queryKey: ["wallet"] });
     },
   });
 };

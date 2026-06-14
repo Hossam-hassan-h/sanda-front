@@ -11,6 +11,7 @@ const mapAssignment = (raw: Record<string, unknown>): JobAssignment => {
     in_progress: "checked-in",
     completed: "checked-out",
     cancelled: "no-show",
+    no_show: "no-show",
   };
   return {
     id: raw.id as string ?? raw._id as string,
@@ -20,6 +21,12 @@ const mapAssignment = (raw: Record<string, unknown>): JobAssignment => {
     worker: worker ? (typeof worker === "object" ? { id: worker._id as string ?? worker.id as string, name: worker.name as string, avatar: worker.avatar as string ?? ((worker.profileImage as Record<string, unknown>)?.url as string) ?? (worker.profile_image as Record<string, unknown>)?.url as string, rating: worker.rating as number } : undefined) : (raw.worker as UserSummary),
     checkInTime: (raw.checked_in_at as string) ?? (raw.checkedInAt as string) ?? (raw.startedAt as string) ?? raw.checkInTime as string,
     checkOutTime: (raw.checked_out_at as string) ?? (raw.checkedOutAt as string) ?? (raw.completedAt as string) ?? raw.checkOutTime as string,
+    checkedInAt: (raw.checked_in_at as string) ?? (raw.checkedInAt as string) ?? null,
+    checkedOutAt: (raw.checked_out_at as string) ?? (raw.checkedOutAt as string) ?? null,
+    completedAt: (raw.completed_at as string) ?? (raw.completedAt as string) ?? null,
+    refundDeadline: (raw.refund_deadline as string) ?? (raw.refundDeadline as string) ?? null,
+    marketplaceStatus: (raw.marketplace_status as JobAssignment["marketplaceStatus"]) ?? (raw.marketplaceStatus as JobAssignment["marketplaceStatus"]),
+    payment: typeof raw.payment === "string" ? raw.payment : ((raw.payment as Record<string, unknown> | undefined)?._id as string) ?? ((raw.payment as Record<string, unknown> | undefined)?.id as string) ?? null,
     status: statusMap[raw.status as string] ?? (raw.status as JobAssignment["status"]),
     createdAt: raw.createdAt as string ?? raw.created_at as string,
   };
@@ -179,5 +186,16 @@ export const jobAssignmentsApi = {
       }
       throw err;
     }
+  },
+
+  /** Request refund during the active 30-minute refund window (employer) */
+  async refund(assignmentId: string): Promise<JobAssignment> {
+    if (USE_MOCKS) {
+      const assignment = mockAssignments.find((a) => a.id === assignmentId);
+      if (assignment) assignment.status = "no-show";
+      return mockDelay(assignment!);
+    }
+    const { data } = await api.post(`/payments/job-assignments/${assignmentId}/refund`);
+    return mapAssignment(data as Record<string, unknown>);
   },
 };

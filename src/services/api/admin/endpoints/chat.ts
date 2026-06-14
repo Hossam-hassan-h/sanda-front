@@ -32,15 +32,8 @@ export async function fetchChats(params?: AdminChatParams): Promise<PaginatedRes
     };
   }
   try {
-    const backendParams: Record<string, unknown> = {
-      page: params?.page ?? 1,
-      pageSize: params?.pageSize ?? 10,
-    };
-    if (params?.search) backendParams.search = params.search;
-    if (params?.status) backendParams.status = params.status;
-
-    const response = await api.get("/admin/chats", { params: backendParams });
-    const body = response.data as { data: Conversation[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } };
+    const response = await api.get("/admin/chats");
+    const body = response.data as { data: Conversation[] };
     let items = body.data ?? [];
 
     if (params?.search) {
@@ -53,13 +46,13 @@ export async function fetchChats(params?: AdminChatParams): Promise<PaginatedRes
       );
     }
 
-    const pagination = body.pagination;
-
+    const page = params?.page ?? 1;
+    const pageSize = params?.pageSize ?? 10;
     return {
-      data: items,
-      total: pagination?.total ?? items.length,
-      page: pagination?.page ?? (params?.page ?? 1),
-      pageSize: pagination?.pageSize ?? (params?.pageSize ?? 10),
+      data: items.slice((page - 1) * pageSize, page * pageSize),
+      total: items.length,
+      page,
+      pageSize,
     };
   } catch {
     return null;

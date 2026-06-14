@@ -14,7 +14,6 @@ export const useUsersQuery = (params?: {
   useQuery({
     queryKey: ["admin", "users", params],
     queryFn: () => usersApi.getAll(params),
-    placeholderData: (previousData) => previousData,
   });
 
 export const useUserQuery = (id: string | null) =>
@@ -118,6 +117,33 @@ export const useUnverifyUser = () => {
   });
 };
 
+export const useSuspendWorker = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload?: { reason?: string; suspension_until?: string } }) =>
+      usersApi.suspend(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+};
+
+export const useBlockWorker = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload?: { reason?: string } }) =>
+      usersApi.block(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+};
+
+export const useRestoreWorker = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload?: { reason?: string } }) =>
+      usersApi.restore(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+};
+
 // ───── Reports ─────
 
 export const useReportsQuery = (params?: {
@@ -129,7 +155,6 @@ export const useReportsQuery = (params?: {
   useQuery({
     queryKey: ["admin", "reports", params],
     queryFn: () => reportsApi.getAll(params),
-    placeholderData: (previousData) => previousData,
   });
 
 export const useReportQuery = (id: string | null) =>
@@ -150,6 +175,19 @@ export const useUpdateReportStatus = () => {
         const paginated = old as { data: Report[] };
         return { ...paginated, data: paginated.data.map((r) => r.id === id ? { ...r, status } : r) };
       });
+    },
+  });
+};
+
+export const useReviewReport = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, decision, admin_notes }: { id: string; decision: "approved" | "rejected"; admin_notes?: string }) =>
+      reportsApi.review(id, { decision, admin_notes }),
+    onSuccess: (report) => {
+      qc.setQueryData(["admin", "reports", report.id], report);
+      qc.invalidateQueries({ queryKey: ["admin", "reports"] });
+      qc.invalidateQueries({ queryKey: ["admin", "users"] });
     },
   });
 };
@@ -181,7 +219,6 @@ export const useJobsQuery = (params?: {
   useQuery({
     queryKey: ["admin", "jobs", params],
     queryFn: () => jobsApi.getAll(params),
-    placeholderData: (previousData) => previousData,
   });
 
 export const useJobQuery = (id: string | null) =>
@@ -232,7 +269,6 @@ export const useWalletTransactionsQuery = (params?: {
   useQuery({
     queryKey: ["admin", "wallet", params],
     queryFn: () => walletApi.getAll(params),
-    placeholderData: (previousData) => previousData,
   });
 
 export const useWalletStatsQuery = () =>
@@ -252,7 +288,6 @@ export const useChatConversationsQuery = (params?: {
   useQuery({
     queryKey: ["admin", "chat", params],
     queryFn: () => chatApi.getAll(params),
-    placeholderData: (previousData) => previousData,
   });
 
 export const useChatConversationQuery = (id: string | null) =>

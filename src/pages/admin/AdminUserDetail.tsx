@@ -23,7 +23,16 @@ import {
   Trash2,
 } from "lucide-react";
 import AdminLayout from "@/layouts/AdminLayout";
-import { useUserQuery, useVerifyUser, useUnverifyUser, useUpdateUser, useDeleteUser } from "@/hooks/useAdminQueries";
+import {
+  useUserQuery,
+  useVerifyUser,
+  useUnverifyUser,
+  useUpdateUser,
+  useDeleteUser,
+  useSuspendWorker,
+  useBlockWorker,
+  useRestoreWorker,
+} from "@/hooks/useAdminQueries";
 import { useJobs } from "@/hooks/useJobs";
 import { useQueryClient } from "@tanstack/react-query";
 import { ErrorState } from "@/components/admin/ErrorState";
@@ -50,6 +59,15 @@ const roleColor: Record<string, string> = {
   employer: "bg-blue-100 text-blue-700 border-blue-200",
   worker: "bg-green-100 text-green-700 border-green-200",
   admin: "bg-red-100 text-red-700 border-red-200",
+};
+
+const workerStateLabel: Record<string, string> = {
+  AVAILABLE: "Available",
+  ASSIGNED: "Assigned",
+  ACTIVE_ON_JOB: "Active on job",
+  COMPLETED: "Completed",
+  SUSPENDED: "Suspended",
+  BLOCKED: "Blocked",
 };
 
 function UserSkeleton() {
@@ -150,6 +168,9 @@ export default function AdminUserDetail() {
   const unverifyUser = useUnverifyUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
+  const suspendWorker = useSuspendWorker();
+  const blockWorker = useBlockWorker();
+  const restoreWorker = useRestoreWorker();
 
   const [previewDoc, setPreviewDoc] = useState<VerificationDocument | null>(null);
   const [reviewing, setReviewing] = useState<"approve" | "reject" | null>(null);
@@ -213,6 +234,48 @@ export default function AdminUserDetail() {
     }
   }, [id, deleteUser, navigate]);
 
+  const handleSuspendWorker = useCallback(async () => {
+    if (!id) return;
+    try {
+      await suspendWorker.mutateAsync({
+        id,
+        payload: { reason: "Admin moderation" },
+      });
+      toast({ title: "Worker suspended", description: "Worker status was updated." });
+      refetch();
+    } catch {
+      toast({ title: "Could not suspend worker", variant: "destructive" });
+    }
+  }, [id, suspendWorker, refetch]);
+
+  const handleBlockWorker = useCallback(async () => {
+    if (!id) return;
+    try {
+      await blockWorker.mutateAsync({
+        id,
+        payload: { reason: "Admin moderation" },
+      });
+      toast({ title: "Worker blocked", description: "Worker can no longer accept jobs." });
+      refetch();
+    } catch {
+      toast({ title: "Could not block worker", variant: "destructive" });
+    }
+  }, [id, blockWorker, refetch]);
+
+  const handleRestoreWorker = useCallback(async () => {
+    if (!id) return;
+    try {
+      await restoreWorker.mutateAsync({
+        id,
+        payload: { reason: "Admin restored worker" },
+      });
+      toast({ title: "Worker restored", description: "Worker is available for assignments again." });
+      refetch();
+    } catch {
+      toast({ title: "Could not restore worker", variant: "destructive" });
+    }
+  }, [id, restoreWorker, refetch]);
+
   // Get user's jobs
   const userJobs = allJobs?.filter((j) => j.employerId === user?.id || j.workerId === user?.id) || [];
 
@@ -247,6 +310,16 @@ export default function AdminUserDetail() {
     ? { status: verificationStatus, documents, submittedAt: user.createdAt }
     : undefined;
   const isPending = verificationStatus === "pending";
+  const workerState = user.workerState ?? user.worker_state ?? "AVAILABLE";
+  const attendanceRate = user.attendanceRate ?? user.attendance_rate ?? 0;
+  const noShowCount = user.noShowCount ?? user.no_show_count ?? 0;
+  const completedJobsCount = user.completedJobsCount ?? user.completed_jobs_count ?? 0;
+  const cancellationCount = user.cancellationCount ?? user.cancellation_count ?? 0;
+  const reportCount = user.reportCount ?? user.report_count ?? 0;
+  const suspensionUntil = user.suspensionUntil ?? user.suspension_until;
+  const adminReviewRequired = user.adminReviewRequired ?? user.admin_review_required;
+  const isWorkerModerationPending =
+    suspendWorker.isPending || blockWorker.isPending || restoreWorker.isPending;
 
   const statusBadge = user.isActive === false ? (
     <Badge variant="destructive">محظور</Badge>
@@ -477,6 +550,96 @@ export default function AdminUserDetail() {
                 )}
               </CardContent>
             </Card>
+
+            {user.role === "worker" && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <ShieldAlert className="w-5 h-5 text-primary" />
+                    <CardTitle className="text-lg">Worker moderation</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">State</span>
+                    <Badge variant={workerState === "BLOCKED" ? "destructive" : "outline"}>
+                      {workerStateLabel[workerState] ?? workerState}
+                    </Badge>
+                  </div>
+                  {suspensionUntil && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-muted-foreground">Suspended until</span>
+                      <span>{new Date(suspensionUntil).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {adminReviewRequired && (
+                    <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">
+                      Admin review required
+                    </Badge>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSuspendWorker}
+                      disabled={isWorkerModerationPending || workerState === "SUSPENDED" || workerState === "BLOCKED"}
+                    >
+                      Suspend
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBlockWorker}
+                      disabled={isWorkerModerationPending || workerState === "BLOCKED"}
+                    >
+                      Block
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="col-span-2"
+                      onClick={handleRestoreWorker}
+                      disabled={isWorkerModerationPending || workerState === "AVAILABLE"}
+                    >
+                      Restore
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {user.role === "worker" && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Briefcase className="w-5 h-5 text-primary" />
+                    <CardTitle className="text-lg">Worker history</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Attendance</span>
+                    <span className="font-medium">{Math.round(attendanceRate * 100)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">No-shows</span>
+                    <span className="font-medium">{noShowCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Completed</span>
+                    <span className="font-medium">{completedJobsCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Cancellations</span>
+                    <span className="font-medium">{cancellationCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Reports</span>
+                    <span className="font-medium">{reportCount}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}

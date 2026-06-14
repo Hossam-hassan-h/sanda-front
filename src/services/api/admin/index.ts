@@ -21,6 +21,9 @@ import {
   unbanUser,
   verifyUser,
   unverifyUser,
+  suspendWorker,
+  blockWorker,
+  restoreWorker,
 } from "./endpoints/users";
 
 import {
@@ -36,6 +39,7 @@ import { fetchChats, fetchChatById } from "./endpoints/chat";
 import {
   fetchReports,
   fetchReportById,
+  reviewReport,
   updateReportStatus,
   deleteReport,
 } from "./endpoints/reports";
@@ -92,6 +96,21 @@ export const usersApi: AdminUsersApi = {
     await unverifyUser(id);
     return { ok: true } as const;
   },
+
+  async suspend(id, payload) {
+    await suspendWorker(id, payload);
+    return { ok: true } as const;
+  },
+
+  async block(id, payload) {
+    await blockWorker(id, payload);
+    return { ok: true } as const;
+  },
+
+  async restore(id, payload) {
+    await restoreWorker(id, payload);
+    return { ok: true } as const;
+  },
 };
 
 export const jobsApi: AdminJobsApi = {
@@ -117,6 +136,7 @@ export const reportsApi: AdminReportsApi = {
   getAll: (params?) => fetchReports(params) as Promise<PaginatedResponse<Report>>,
   getById: (id) => fetchReportById(id) as Promise<Report>,
   updateStatus: (id, status) => updateReportStatus(id, status) as Promise<{ ok: true }>,
+  review: (id, payload) => reviewReport(id, payload) as Promise<Report>,
   delete: (id) => deleteReport(id) as Promise<{ ok: true }>,
 };
 

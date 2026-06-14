@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { socket } from "@/lib/socket";
 import { useAuth } from "@/context/AuthContext";
 import { SocketContext } from "@/context/socket-context";
-import type { Conversation, Message, Notification } from "@/api/types";
+import type { Conversation, JobAssignment, Message, Notification } from "@/api/types";
 
 const getId = (value: { id?: string; _id?: string } | string | null | undefined) =>
   typeof value === "string" ? value : value?.id ?? value?._id ?? "";
@@ -104,6 +104,26 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["notifications", "unread-count"], { unreadCount, unread_count: unreadCount });
     };
 
+    const handleAssignmentUpdated = (payload: JobAssignment) => {
+      const assignmentId = getId(payload);
+      if (assignmentId) {
+        queryClient.setQueryData(["assignments", assignmentId], payload);
+      }
+      queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet"] });
+    };
+
+    const handleUserUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["auth"] });
+    };
+
+    const handleAdminUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: ["admin"] });
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+    };
+
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
     socket.io.on("reconnect_attempt", handleReconnectAttempt);
@@ -112,6 +132,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     socket.on("message:read", handleMessageRead);
     socket.on("notification:new", handleNotificationNew);
     socket.on("notifications:unread-count", handleUnreadCount);
+    socket.on("assignment:updated", handleAssignmentUpdated);
+    socket.on("payment:updated", handleAssignmentUpdated);
+    socket.on("user:updated", handleUserUpdated);
+    socket.on("admin:updated", handleAdminUpdated);
 
     return () => {
       socket.off("connect", handleConnect);
@@ -122,6 +146,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       socket.off("message:read", handleMessageRead);
       socket.off("notification:new", handleNotificationNew);
       socket.off("notifications:unread-count", handleUnreadCount);
+      socket.off("assignment:updated", handleAssignmentUpdated);
+      socket.off("payment:updated", handleAssignmentUpdated);
+      socket.off("user:updated", handleUserUpdated);
+      socket.off("admin:updated", handleAdminUpdated);
     };
   }, [isAuthenticated, queryClient]);
 

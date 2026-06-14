@@ -63,11 +63,6 @@ export default function AdminJobs() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    setPage(1);
-  }, []);
-
   const [editJobId, setEditJobId] = useState<string | null>(null);
   const [deleteJobId, setDeleteJobId] = useState<string | null>(null);
 
@@ -84,6 +79,8 @@ export default function AdminJobs() {
 
   const jobs = query.data?.data ?? [];
   const total = query.data?.total ?? 0;
+  const currentPage = query.data?.page ?? 1;
+  const currentPageSize = query.data?.pageSize ?? 10;
   const editingJob = jobs.find((j) => j.id === editJobId) ?? null;
 
   const openEdit = useCallback((job: Job) => {
@@ -206,7 +203,10 @@ export default function AdminJobs() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <Search
           placeholder="ابحث بالعنوان، الفئة، أو المدينة..."
-          onSearch={handleSearch}
+          onSearch={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
         />
       </div>
 
@@ -318,10 +318,10 @@ export default function AdminJobs() {
             />
             {total > 0 && (
               <Pagination
-                currentPage={page}
-                totalPages={Math.ceil(total / pageSize)}
+                currentPage={currentPage}
+                totalPages={Math.ceil(total / currentPageSize)}
                 totalItems={total}
-                pageSize={pageSize}
+                pageSize={currentPageSize}
                 onPageChange={setPage}
                 onPageSizeChange={(size) => {
                   setPageSize(size);

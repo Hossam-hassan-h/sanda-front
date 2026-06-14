@@ -65,8 +65,24 @@ export interface User {
   role: UserRole;
   avatar?: string;        // maps to ERD profile_image
   walletBalance: number;  // maps to ERD Wallets.balance (denormalized)
-  isVerified: boolean;
+  workerState?: "AVAILABLE" | "ASSIGNED" | "ACTIVE_ON_JOB" | "COMPLETED" | "SUSPENDED" | "BLOCKED";
+  worker_state?: "AVAILABLE" | "ASSIGNED" | "ACTIVE_ON_JOB" | "COMPLETED" | "SUSPENDED" | "BLOCKED";
+  attendanceRate?: number;
+  attendance_rate?: number;
+  noShowCount?: number;
+  no_show_count?: number;
+  completedJobsCount?: number;
+  completed_jobs_count?: number;
+  cancellationCount?: number;
+  cancellation_count?: number;
+  reportCount?: number;
+  report_count?: number;
+  suspensionUntil?: string | null;
+  suspension_until?: string | null;
+  adminReviewRequired?: boolean;
+  admin_review_required?: boolean;
   confirmedMail?: boolean;
+  isVerified: boolean;
   isActive?: boolean;     // maps to ERD is_active
   rating?: number;
   ratingsCount?: number;
@@ -250,10 +266,15 @@ export interface Report {
   reportedBy: UserSummary;
   reason: string;
   status: "open" | "reviewed" | "closed";
-  createdAt: string;
-  jobId?: string;
+  type?: "general" | "absence" | "no_show";
   assignmentId?: string;
   assignment?: JobAssignment | string | null;
+  reviewDecision?: "pending" | "approved" | "rejected";
+  review_decision?: "pending" | "approved" | "rejected";
+  adminNotes?: string;
+  admin_notes?: string;
+  createdAt: string;
+  jobId?: string;
   job?: JobSummary;
 }
 

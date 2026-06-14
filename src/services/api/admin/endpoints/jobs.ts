@@ -14,27 +14,22 @@ export async function fetchJobs(params?: AdminJobsParams): Promise<PaginatedResp
     return { data: result.slice((page - 1) * pageSize, page * pageSize), total: result.length, page, pageSize };
   }
   try {
-    const backendParams: Record<string, unknown> = {
-      page: params?.page ?? 1,
-      pageSize: params?.pageSize ?? 10,
-    };
+    const backendParams: Record<string, unknown> = {};
     if (params?.status) backendParams.status = params.status;
     if (params?.category) backendParams.category = params.category;
 
     const response = await api.get("/admin/jobs", { params: backendParams });
-    const body = response.data as { data: Record<string, unknown>[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } };
+    const body = response.data as { data: Record<string, unknown>[] };
     const rawJobs = body.data as Record<string, unknown>[];
 
     if (!Array.isArray(rawJobs)) return null;
     const mapped = rawJobs.map(mapBackendJob);
-    const pagination = body.pagination;
 
-    return {
-      data: mapped,
-      total: pagination?.total ?? mapped.length,
-      page: pagination?.page ?? (params?.page ?? 1),
-      pageSize: pagination?.pageSize ?? (params?.pageSize ?? 10),
-    };
+    const page = params?.page ?? 1;
+    const pageSize = params?.pageSize ?? 10;
+    const total = mapped.length;
+
+    return { data: mapped.slice((page - 1) * pageSize, page * pageSize), total, page, pageSize };
   } catch {
     return null;
   }

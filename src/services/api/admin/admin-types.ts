@@ -85,6 +85,9 @@ export interface AdminUsersApi {
   unban(id: string): Promise<{ ok: true }>;
   verify(id: string): Promise<{ ok: true }>;
   unverify(id: string): Promise<{ ok: true }>;
+  suspend(id: string, payload?: { reason?: string; suspension_until?: string }): Promise<{ ok: true }>;
+  block(id: string, payload?: { reason?: string }): Promise<{ ok: true }>;
+  restore(id: string, payload?: { reason?: string }): Promise<{ ok: true }>;
 }
 
 export interface AdminJobsApi {
@@ -98,6 +101,7 @@ export interface AdminReportsApi {
   getAll(params?: AdminReportsParams): Promise<PaginatedResponse<Report>>;
   getById(id: string): Promise<Report>;
   updateStatus(id: string, status: "open" | "reviewed" | "closed"): Promise<{ ok: true }>;
+  review(id: string, payload: { decision: "approved" | "rejected"; admin_notes?: string }): Promise<Report>;
   delete(id: string): Promise<{ ok: true }>;
 }
 

@@ -28,29 +28,22 @@ export async function fetchReports(params?: AdminReportsParams): Promise<Paginat
     };
   }
   try {
-    const backendParams: Record<string, unknown> = {
-      page: params?.page ?? 1,
-      pageSize: params?.pageSize ?? 10,
-    };
-    if (params?.search) backendParams.search = params.search;
-    if (params?.status) backendParams.status = params.status;
-
-    const response = await api.get("/admin/reports", { params: backendParams });
-    const body = response.data as { data: Report[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } };
+    const response = await api.get("/admin/reports", { params });
+    const body = response.data as { data: Report[] };
     let items = body.data ?? [];
 
-    if (params?.search && Array.isArray(items)) {
+    if (params?.search) {
       const q = params.search.toLowerCase();
       items = items.filter((r) => r.reason.toLowerCase().includes(q));
     }
 
-    const pagination = body.pagination;
-
+    const page = params?.page ?? 1;
+    const pageSize = params?.pageSize ?? 10;
     return {
-      data: Array.isArray(items) ? items : [],
-      total: pagination?.total ?? (Array.isArray(items) ? items.length : 0),
-      page: pagination?.page ?? (params?.page ?? 1),
-      pageSize: pagination?.pageSize ?? (params?.pageSize ?? 10),
+      data: items.slice((page - 1) * pageSize, page * pageSize),
+      total: items.length,
+      page,
+      pageSize,
     };
   } catch {
     return null;
@@ -78,6 +71,26 @@ export async function updateReportStatus(id: string, status: "open" | "reviewed"
   try {
     await api.patch(`/admin/reports/${id}/status`, { status });
     return { ok: true };
+  } catch {
+    return null;
+  }
+}
+
+export async function reviewReport(
+  id: string,
+  payload: { decision: "approved" | "rejected"; admin_notes?: string },
+): Promise<Report | null> {
+  if (USE_MOCKS) {
+    const r = mockReports.find((x) => x.id === id);
+    if (r) {
+      r.status = payload.decision === "approved" ? "reviewed" : "closed";
+      r.reviewDecision = payload.decision;
+    }
+    return r ?? null;
+  }
+  try {
+    const response = await api.patch(`/admin/reports/${id}/review`, payload);
+    return response.data as Report;
   } catch {
     return null;
   }

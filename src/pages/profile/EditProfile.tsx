@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import UserLayout from "@/layouts/UserLayout";
@@ -9,64 +9,56 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import SkillsInput from "@/components/SkillsInput";
-import { ArrowLeft, User } from "lucide-react";
-import Feedback from "@/components/common/Feedback";
-import FormSubmitButton from "@/components/common/FormSubmitButton";
-import { authApi } from "@/api/auth";
-import { getApiErrorMessage } from "@/lib/get-api-error-message";
+import { ArrowLeft, User, Loader2 } from "lucide-react";
 
 export default function EditProfile() {
-  const { user, switchRole, updateUser } = useAuth();
+  const { user, switchRole } = useAuth();
   const navigate = useNavigate();
+
   const [name, setName] = useState(user?.name || "");
   const [bio, setBio] = useState(user?.bio || "");
   const [city, setCity] = useState(user?.city || "");
   const [skills, setSkills] = useState<string[]>(user?.skills || []);
   const [loading, setLoading] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   if (!user) {
     return (
       <UserLayout>
-        <div className="container mx-auto py-8 text-center text-muted-foreground">يرجى تسجيل الدخول لتعديل حسابك.</div>
+        <div className="container mx-auto py-8 text-center text-muted-foreground">
+          يرجى تسجيل الدخول لتعديل حسابك.
+        </div>
       </UserLayout>
     );
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
-
-    const payload = {
-      name: name.trim(),
-      bio: bio.trim(),
-      city: city.trim(),
-      skills: user.role === "worker" ? skills : [],
-    };
-
-    if (!payload.name) {
-      setFormError("الاسم مطلوب.");
-      return;
-    }
-    if (payload.name.length > 100) {
-      setFormError("الاسم لا يزيد عن 100 حرف.");
-      return;
-    }
-    if (payload.bio.length > 500) {
-      setFormError("النبذة لا تزيد عن 500 حرف.");
-      return;
-    }
-
     setLoading(true);
+
     try {
-      const updatedUser = await authApi.updateProfile(user.id, payload);
-      updateUser(updatedUser);
-      toast({ title: "تم الحفظ", description: "تم تحديث بيانات ملفك الشخصي بنجاح." });
-      navigate(`/profile/${user.id}`);
-    } catch (error) {
-      const message = getApiErrorMessage(error, "فشل حفظ البيانات الجديدة.");
-      setFormError(message);
-      toast({ title: "خطأ", description: message, variant: "destructive" });
+      // Simulate saving to API
+      setTimeout(() => {
+        // Mocking user profile update by storing updated data
+        const updatedUser = {
+          ...user,
+          name,
+          bio,
+          city,
+          skills: user.role === "worker" ? skills : [],
+        };
+        localStorage.setItem("sanda_user", JSON.stringify(updatedUser));
+        toast({
+          title: "تم الحفظ",
+          description: "تم تحديث بيانات ملفك الشخصي بنجاح.",
+        });
+        navigate(`/profile/${user.id}`);
+      }, 800);
+    } catch {
+      toast({
+        title: "خطأ",
+        description: "فشل في حفظ البيانات الجديدة.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -75,8 +67,9 @@ export default function EditProfile() {
   return (
     <UserLayout>
       <div className="container mx-auto px-4 py-8 max-w-2xl text-right" dir="rtl">
+        {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <Button type="button" variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="رجوع">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -93,22 +86,36 @@ export default function EditProfile() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSave} className="space-y-5" noValidate>
-              <Feedback message={formError} />
+            <form onSubmit={handleSave} className="space-y-5">
               <div className="space-y-1">
                 <Label htmlFor="name" className="text-xs font-semibold">الاسم بالكامل</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} disabled={loading} required aria-invalid={!name.trim()} />
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
               </div>
 
               <div className="space-y-1">
                 <Label htmlFor="city" className="text-xs font-semibold">المدينة</Label>
-                <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} disabled={loading} placeholder="القاهرة، الجيزة، الإسكندرية..." />
+                <Input
+                  id="city"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="القاهرة، الجيزة، الإسكندرية..."
+                />
               </div>
 
               <div className="space-y-1">
                 <Label htmlFor="bio" className="text-xs font-semibold">نبذة شخصية (Bio)</Label>
-                <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} disabled={loading} maxLength={500} placeholder="اكتب نبذة قصيرة عن مهاراتك أو خدماتك..." className="resize-none h-24" />
-                <div className="text-xs text-muted-foreground text-end">{bio.length}/500</div>
+                <Textarea
+                  id="bio"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="اكتب نبذة قصيرة عن مهاراتك أو خدماتك..."
+                  className="resize-none h-24"
+                />
               </div>
 
               {user.role === "worker" && (
@@ -118,26 +125,39 @@ export default function EditProfile() {
                 </div>
               )}
 
-              <div className="border-t pt-4 flex items-center justify-between gap-4">
+              {/* Demo switch for testing */}
+              <div className="border-t pt-4 flex items-center justify-between">
                 <div>
                   <span className="text-xs font-semibold block">تغيير نوع الحساب (تجريبي)</span>
-                  <span className="text-[10px] text-muted-foreground">التحويل متاح فقط في بيئة التطوير.</span>
+                  <span className="text-[10px] text-muted-foreground">قم بالتحويل بين صاحب عمل أو عامل لتجربة الخصائص المختلفة.</span>
                 </div>
                 <div className="flex gap-2">
-                  <Button type="button" variant={user.role === "worker" ? "default" : "outline"} size="sm" onClick={() => { switchRole("worker"); window.location.reload(); }}>
+                  <Button
+                    type="button"
+                    variant={user.role === "worker" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => { switchRole("worker"); window.location.reload(); }}
+                  >
                     عامل
                   </Button>
-                  <Button type="button" variant={user.role === "employer" ? "default" : "outline"} size="sm" onClick={() => { switchRole("employer"); window.location.reload(); }}>
+                  <Button
+                    type="button"
+                    variant={user.role === "employer" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => { switchRole("employer"); window.location.reload(); }}
+                  >
                     صاحب عمل
                   </Button>
                 </div>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <FormSubmitButton className="flex-1" pending={loading} pendingLabel="جاري الحفظ...">
-                  حفظ التغييرات
-                </FormSubmitButton>
-                <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={loading}>إلغاء</Button>
+                <Button type="submit" className="flex-1" disabled={loading}>
+                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "حفظ التغييرات"}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+                  إلغاء
+                </Button>
               </div>
             </form>
           </CardContent>

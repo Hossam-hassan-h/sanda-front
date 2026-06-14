@@ -8,7 +8,6 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (payload: LoginPayload) => Promise<User>;
   register: (payload: RegisterPayload) => Promise<RegisterResponse>;
-  loginFromVerification: (user: User, token: string) => void;
   logout: () => void;
   switchRole: (role: UserRole) => void;
   updateUser: (updates: Partial<User>) => void;
@@ -85,12 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const loginFromVerification = useCallback((user: User, token: string) => {
-    persist(user, token);
-  }, [persist]);
-
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser((prev) => {
+      if (!prev && updates.id && updates.email && updates.role) {
+        const nextUser = updates as User;
+        localStorage.setItem("sanda_user", JSON.stringify(nextUser));
+        return nextUser;
+      }
       if (!prev) return prev;
       const updated = { ...prev, ...updates };
       localStorage.setItem("sanda_user", JSON.stringify(updated));
@@ -99,8 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isLoading, isAuthenticated: !!user, login, register, loginFromVerification, logout, switchRole, updateUser }),
-    [user, isLoading, login, register, loginFromVerification, logout, switchRole, updateUser]
+    () => ({ user, isLoading, isAuthenticated: !!user, login, register, logout, switchRole, updateUser }),
+    [user, isLoading, login, register, logout, switchRole, updateUser]
   );
 
   return (

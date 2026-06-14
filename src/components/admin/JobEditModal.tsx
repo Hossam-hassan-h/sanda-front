@@ -1,11 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { Modal } from "./Modal";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import FormSubmitButton from "@/components/common/FormSubmitButton";
 import type { Job } from "@/api/types";
 
 const CATEGORIES = ["ضيافة وفعاليات", "تنظيف", "صيانة وتركيبات", "مطاعم", "تسويق ميداني", "تصوير", "توصيل"];
@@ -236,9 +235,10 @@ export default function JobEditModal({
             <Button variant="outline" onClick={() => handleClose(false)}>
               إلغاء
             </Button>
-            <FormSubmitButton pending={isSaving} pendingLabel="جاري الحفظ...">
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving && <Loader2 className="h-4 w-4 animate-spin ml-1" />}
               حفظ التغييرات
-            </FormSubmitButton>
+            </Button>
           </div>
         </div>
       </Modal>

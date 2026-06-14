@@ -5,14 +5,14 @@ import { authApi } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/get-api-error-message";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import { useAuth } from "@/context/AuthContext";
 
 const ACCOUNT_VERIFY_EMAIL_KEY = "account_verify_email";
 
 export default function VerifyEmail() {
   const navigate = useNavigate();
-  const { loginFromVerification } = useAuth();
+  const { updateUser } = useAuth();
   const email = localStorage.getItem(ACCOUNT_VERIFY_EMAIL_KEY) || "";
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -31,8 +31,9 @@ export default function VerifyEmail() {
 
     setIsSubmitting(true);
     try {
-      const { user, token } = await authApi.verifyEmail({ email, otp });
-      loginFromVerification(user, token);
+      const { user } = await authApi.verifyEmail({ email, otp });
+      updateUser(user);
+      localStorage.setItem("sanda_user", JSON.stringify(user));
       localStorage.removeItem(ACCOUNT_VERIFY_EMAIL_KEY);
       toast({ title: "تم تأكيد البريد الإلكتروني", description: "يمكنك الآن استخدام حسابك." });
       navigate("/jobs", { replace: true });

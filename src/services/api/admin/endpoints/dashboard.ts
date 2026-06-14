@@ -78,10 +78,9 @@ export async function fetchDashboardStats(): Promise<AdminStats | null> {
     return computeStats(rawUsers, rawJobs);
   }
   try {
-    // Get all data for stats computation - backend max pageSize is 100
     const [usersRes, jobsRes] = await Promise.all([
-      api.get("/admin/users", { params: { pageSize: 100 } }),
-      api.get("/admin/jobs", { params: { pageSize: 100 } }),
+      api.get("/admin/users"),
+      api.get("/admin/jobs"),
     ]);
 
     const usersBody = usersRes.data as { data: Record<string, unknown>[] };

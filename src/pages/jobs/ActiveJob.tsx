@@ -99,6 +99,9 @@ export default function ActiveJob() {
                   key={assignment.id}
                   assignmentId={assignment.id}
                   assignmentStatus={assignment.status}
+                  marketplaceStatus={assignment.marketplaceStatus}
+                  refundDeadline={assignment.refundDeadline}
+                  workerId={assignment.workerId}
                   workerName={assignment.worker?.name}
                 />
               ))

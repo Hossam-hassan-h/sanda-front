@@ -42,11 +42,6 @@ export default function AdminWallet() {
   const [typeFilter, setTypeFilter] = useState("");
   const [resetKey, setResetKey] = useState(0);
 
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    setPage(1);
-  }, []);
-
   const {
     data: response,
     isLoading,
@@ -218,7 +213,10 @@ export default function AdminWallet() {
         <Search
           key={resetKey}
           placeholder="بحث عن وظيفة..."
-          onSearch={handleSearch}
+          onSearch={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
           defaultValue={search}
         />
         <div className="flex items-center gap-2 flex-wrap">

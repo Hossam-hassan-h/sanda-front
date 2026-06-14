@@ -15,6 +15,7 @@ import {
   useReportQuery,
   useUpdateReportStatus,
   useDeleteReport,
+  useReviewReport,
 } from "@/hooks/useAdminQueries";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ErrorState } from "@/components/admin/ErrorState";
@@ -89,6 +90,7 @@ export default function AdminReportDetail() {
 
   const updateStatus = useUpdateReportStatus();
   const deleteReport = useDeleteReport();
+  const reviewReport = useReviewReport();
 
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -100,6 +102,11 @@ export default function AdminReportDetail() {
   const handleClose = async () => {
     if (!report) return;
     await updateStatus.mutateAsync({ id: report.id, status: "closed" });
+  };
+
+  const handleDecision = async (decision: "approved" | "rejected") => {
+    if (!report) return;
+    await reviewReport.mutateAsync({ id: report.id, decision });
   };
 
   const handleDelete = async () => {
@@ -309,6 +316,30 @@ export default function AdminReportDetail() {
                       <XCircle className="w-4 h-4" />
                       إغلاق البلاغ
                     </Button>
+                  )}
+                  {report.type === "absence" && (
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="w-full gap-2"
+                        onClick={() => handleDecision("approved")}
+                        disabled={reviewReport.isPending}
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Approve absence report
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2"
+                        onClick={() => handleDecision("rejected")}
+                        disabled={reviewReport.isPending}
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Reject absence report
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardContent>

@@ -4,6 +4,14 @@ import type { PaginatedResponse, AdminUsersParams } from "../admin-types";
 import { mapBackendUser } from "../admin-mappers";
 import { mockUsers } from "@/lib/mock/data";
 
+function stripPagination(params?: AdminUsersParams): Record<string, unknown> {
+  if (!params) return {};
+  const { page: _p, pageSize: _ps, ...rest } = params;
+  return Object.fromEntries(
+    Object.entries(rest).filter(([, v]) => v !== undefined && v !== null)
+  );
+}
+
 function filterMockUsers(params?: AdminUsersParams): User[] {
   let result = [...mockUsers] as User[];
   if (params?.search) {
@@ -29,28 +37,22 @@ export async function fetchUsers(params?: AdminUsersParams): Promise<PaginatedRe
     };
   }
   try {
-    const backendParams: Record<string, unknown> = {
-      page: params?.page ?? 1,
-      pageSize: params?.pageSize ?? 10,
-    };
-    if (params?.search) backendParams.search = params.search;
-    if (params?.role) backendParams.role = params.role;
-    if (params?.status) backendParams.status = params.status;
-
-    const response = await api.get("/admin/users", { params: backendParams });
-    const body = response.data as { data: Record<string, unknown>[]; pagination?: { page: number; pageSize: number; total: number; totalPages: number } };
+    const backendParams = stripPagination(params);
+    const response = await api.get("/users/", { params: backendParams });
+    const body = response.data as { data: Record<string, unknown>[] };
     const rawUsers = body.data as Record<string, unknown>[];
 
     if (!Array.isArray(rawUsers)) return null;
 
     const mapped = rawUsers.map(mapBackendUser);
-    const pagination = body.pagination;
+    const page = params?.page || 1;
+    const pageSize = params?.pageSize || 10;
 
     return {
-      data: mapped,
-      total: pagination?.total ?? mapped.length,
-      page: pagination?.page ?? (params?.page ?? 1),
-      pageSize: pagination?.pageSize ?? (params?.pageSize ?? 10),
+      data: mapped.slice((page - 1) * pageSize, page * pageSize),
+      total: mapped.length,
+      page,
+      pageSize,
     };
   } catch {
     return null;
@@ -60,7 +62,7 @@ export async function fetchUsers(params?: AdminUsersParams): Promise<PaginatedRe
 export async function fetchAllUsers(): Promise<User[] | null> {
   if (USE_MOCKS) return filterMockUsers();
   try {
-    const response = await api.get("/admin/users", { params: { pageSize: 1000 } });
+    const response = await api.get("/users/");
     const body = response.data as { data: Record<string, unknown>[] };
     const rawUsers = body.data as Record<string, unknown>[];
 
@@ -144,6 +146,36 @@ export async function verifyUser(id: string): Promise<User | null> {
 export async function unverifyUser(id: string): Promise<User | null> {
   try {
     const response = await api.patch(`/admin/users/${id}/unverify`);
+    const raw = response.data as Record<string, unknown>;
+    return mapBackendUser(raw);
+  } catch {
+    return null;
+  }
+}
+
+export async function suspendWorker(id: string, payload: { reason?: string; suspension_until?: string } = {}): Promise<User | null> {
+  try {
+    const response = await api.patch(`/admin/users/${id}/suspend`, payload);
+    const raw = response.data as Record<string, unknown>;
+    return mapBackendUser(raw);
+  } catch {
+    return null;
+  }
+}
+
+export async function blockWorker(id: string, payload: { reason?: string } = {}): Promise<User | null> {
+  try {
+    const response = await api.patch(`/admin/users/${id}/block`, payload);
+    const raw = response.data as Record<string, unknown>;
+    return mapBackendUser(raw);
+  } catch {
+    return null;
+  }
+}
+
+export async function restoreWorker(id: string, payload: { reason?: string } = {}): Promise<User | null> {
+  try {
+    const response = await api.patch(`/admin/users/${id}/restore`, payload);
     const raw = response.data as Record<string, unknown>;
     return mapBackendUser(raw);
   } catch {
