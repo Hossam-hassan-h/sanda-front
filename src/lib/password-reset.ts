@@ -1,3 +1,5 @@
+import { getApiErrorMessage as normalizeApiErrorMessage } from "@/lib/api-error";
+
 export const OTP_LAST_SENT_KEY = "otp_last_sent";
 export const RESET_EMAIL_KEY = "password_reset_email";
 export const RESET_OTP_KEY = "password_reset_otp";
@@ -36,18 +38,4 @@ export const clearResetFlow = () => {
   localStorage.removeItem(RESET_STEP_KEY);
 };
 
-export const getApiErrorMessage = (error: unknown, fallback: string) => {
-  const maybeError = error as {
-    response?: { data?: { message?: string; errors?: Array<{ message?: string }> } };
-    message?: string;
-  };
-  const validationMessage = maybeError.response?.data?.errors?.[0]?.message;
-  const responseMessage = maybeError.response?.data?.message;
-
-  return (
-    (responseMessage === "Validation Error" ? validationMessage : responseMessage) ||
-    validationMessage ||
-    maybeError.message ||
-    fallback
-  );
-};
+export const getApiErrorMessage = normalizeApiErrorMessage;

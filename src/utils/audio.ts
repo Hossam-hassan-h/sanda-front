@@ -29,6 +29,7 @@ export function playScanSound(): void {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.15);
   } catch {
+    // Audio feedback is optional; ignore browsers that block short sounds.
   }
 }
 
@@ -38,5 +39,6 @@ export function vibrateOnScan(): void {
       navigator.vibrate(200);
     }
   } catch {
+    // Haptics are optional and may be blocked by the browser.
   }
 }

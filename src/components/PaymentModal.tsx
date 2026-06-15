@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { paymentService, type ApplicationPaymentIntent } from "@/lib/payment";
 import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface PaymentModalProps {
   open: boolean;
@@ -15,15 +16,6 @@ interface PaymentModalProps {
   amount: number;
   onSuccess?: () => void;
 }
-
-const getErrorMessage = (error: unknown, fallback: string) => {
-  if (typeof error === "object" && error && "response" in error) {
-    const data = (error as { response?: { data?: { message?: string } } }).response?.data;
-    if (data?.message) return data.message;
-  }
-  if (error instanceof Error) return error.message;
-  return fallback;
-};
 
 function PaymentForm({
   payment,
@@ -50,7 +42,7 @@ function PaymentForm({
       if (result.error) {
         toast({
           title: "Payment failed",
-          description: result.error.message || "Please check your payment details.",
+          description: getApiErrorMessage(result.error, "Please check your payment details."),
           variant: "destructive",
         });
         return;
@@ -67,7 +59,7 @@ function PaymentForm({
     } catch (error) {
       toast({
         title: "Payment failed",
-        description: getErrorMessage(error, "Please try again or use another test card."),
+        description: getApiErrorMessage(error, "Please try again or use another test card."),
         variant: "destructive",
       });
     } finally {
@@ -119,7 +111,7 @@ export default function PaymentModal({
       .catch((error) => {
         toast({
           title: "Payment setup failed",
-          description: getErrorMessage(error, "Please try again."),
+          description: getApiErrorMessage(error, "Please try again."),
           variant: "destructive",
         });
         onOpenChange(false);

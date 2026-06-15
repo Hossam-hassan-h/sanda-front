@@ -42,7 +42,7 @@ export default function QRScanner({ onScanComplete }: QRScannerProps) {
     onSuccess: handleScanSuccess,
     onError: (err) => {
       if (err.type === "PERMISSION_DENIED") {
-        toast({ title: "صلاحية الكاميرا", description: err.message, variant: "destructive" });
+        toast({ title: "صلاحية الكاميرا", description: getApiErrorMessage(err, "فشل الوصول إلى الكاميرا"), variant: "destructive" });
       }
     },
   });
@@ -149,7 +149,7 @@ export default function QRScanner({ onScanComplete }: QRScannerProps) {
     } catch (error) {
       toast({
         title: "خطأ",
-        description: error instanceof Error ? error.message : "فشل في تشغيل الكاميرا",
+        description: getApiErrorMessage(error, "فشل في تشغيل الكاميرا"),
         variant: "destructive",
       });
       setScanning(false);

@@ -4,6 +4,7 @@ import SettingsLayout from "@/layouts/SettingsLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import PasswordInput from "@/components/PasswordInput";
 import { toast } from "@/hooks/use-toast";
 import { authApi } from "@/api/auth";
 import { getApiErrorMessage } from "@/lib/password-reset";
@@ -101,8 +102,7 @@ export default function Settings() {
               <form onSubmit={handlePasswordChange} className="space-y-3">
                 <div className="space-y-1">
                   <label className="text-xs">كلمة المرور الحالية</label>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     required
@@ -110,8 +110,8 @@ export default function Settings() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs">كلمة المرور الجديدة</label>
-                  <Input
-                    type="password"
+                  <PasswordInput
+                    autoComplete="new-password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
@@ -119,8 +119,8 @@ export default function Settings() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs">تأكيد كلمة المرور الجديدة</label>
-                  <Input
-                    type="password"
+                  <PasswordInput
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required

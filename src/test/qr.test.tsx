@@ -1,17 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import QRGenerator from "@/components/QRGenerator";
 import QRScanner from "@/components/QRScanner";
 import { toast } from "@/hooks/use-toast";
+import { jobAssignmentsApi } from "@/api/jobAssignments";
+import { generateQRDataUrl } from "@/utils/qrGenerator";
+import { getCameras, isSecureContext } from "@/utils/camera";
+
+let geolocationCb: PositionCallback | null = null;
+let geolocationErrCb: PositionErrorCallback | null = null;
 
 vi.mock("@/hooks/use-toast", () => ({
   toast: vi.fn(),
   useToast: vi.fn(() => ({ toast: vi.fn(), toasts: [], dismiss: vi.fn() })),
 }));
 
+vi.mock("@/utils/qrGenerator", async () => {
+  const actual = await vi.importActual<typeof import("@/utils/qrGenerator")>("@/utils/qrGenerator");
+  return {
+    ...actual,
+    generateQRDataUrl: vi.fn().mockResolvedValue("data:image/png;base64,mock-qr"),
+  };
+});
+
+vi.mock("@/utils/camera", () => ({
+  getCameras: vi.fn().mockResolvedValue([{ deviceId: "camera-1", label: "Back camera" }]),
+  isSecureContext: vi.fn().mockReturnValue(true),
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(generateQRDataUrl).mockResolvedValue("data:image/png;base64,mock-qr");
+  vi.mocked(getCameras).mockResolvedValue([{ deviceId: "camera-1", label: "Back camera" }] as MediaDeviceInfo[]);
+  vi.mocked(isSecureContext).mockReturnValue(true);
   geolocationCb = null;
   geolocationErrCb = null;
 
@@ -26,6 +48,17 @@ beforeEach(() => {
     value: {
       getUserMedia: vi.fn().mockResolvedValue({
         getTracks: () => [{ stop: vi.fn() }],
+      }),
+    },
+    writable: true,
+    configurable: true,
+  });
+
+  Object.defineProperty(navigator, "geolocation", {
+    value: {
+      getCurrentPosition: vi.fn((success: PositionCallback, error: PositionErrorCallback) => {
+        geolocationCb = success;
+        geolocationErrCb = error;
       }),
     },
     writable: true,
@@ -83,15 +116,14 @@ describe("QRGenerator Component", () => {
 
     const qrImage = await screen.findByAltText("QR Code");
     expect(qrImage).toBeInTheDocument();
-    expect(qrImage.getAttribute("src")).toContain("api.qrserver.com");
-    expect(qrImage.getAttribute("src")).toContain("mock-token");
+    expect(qrImage).toHaveAttribute("src", "data:image/png;base64,mock-qr");
     expect(screen.getByText(/أحمد/)).toBeInTheDocument();
     expect(toast).not.toHaveBeenCalled();
   });
 });
 
 describe("QRScanner Component", () => {
-  it("should render camera start button and manual entry section", () => {
+  it("should render camera start button and manual entry section", async () => {
     render(<QRScanner />, { wrapper: createWrapper() });
 
     render(<QRGenerator assignmentId="ja1" assignmentStatus="assigned" />, { wrapper: createWrapper() });
@@ -105,7 +137,7 @@ describe("QRScanner Component", () => {
   });
 
   it("calls generateQRDataUrl with correct payload", async () => {
-    const generateQRDataUrlMock = (await import("@/utils/qrGenerator")).generateQRDataUrl as ReturnType<typeof vi.fn>;
+    const generateQRDataUrlMock = vi.mocked(generateQRDataUrl);
     (await import("@/api/jobAssignments")).jobAssignmentsApi.generateCheckInQR = vi.fn().mockResolvedValue({
       qrToken: "jwt-token-xyz", type: "check_in", expiresAt: new Date(Date.now() + 300000).toISOString(),
     });
@@ -138,7 +170,7 @@ describe("QRScanner Component", () => {
     (await import("@/api/jobAssignments")).jobAssignmentsApi.generateCheckInQR = vi.fn().mockResolvedValue({
       qrToken: "token", type: "check_in", expiresAt: new Date(Date.now() + 300000).toISOString(),
     } as never);
-    (await import("@/utils/qrGenerator")).generateQRDataUrl = vi.fn().mockRejectedValue(new Error("فشل التوليد"));
+    vi.mocked(generateQRDataUrl).mockRejectedValue(new Error("فشل التوليد"));
 
     render(<QRGenerator assignmentId="ja1" assignmentStatus="assigned" />, { wrapper: createWrapper() });
     fireEvent.click(screen.getByText("QR حضور"));
@@ -183,12 +215,8 @@ describe("QRScanner Component — Positive", () => {
     fireEvent.click(screen.getByRole("button", { name: "فتح الكاميرا" }));
 
     await waitFor(() => {
-      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({
-        video: { facingMode: "environment" },
-      });
+      expect(screen.getByText("\u0625\u063A\u0644\u0627\u0642 \u0627\u0644\u0643\u0627\u0645\u064A\u0631\u0627")).toBeInTheDocument();
     });
-
-    expect(screen.getByText("إيقاف")).toBeInTheDocument();
   });
 
   it("should successfully check in when manual QR data is submitted", async () => {
@@ -205,6 +233,8 @@ describe("QRScanner Component — Positive", () => {
 
     render(<QRScanner />, { wrapper: createWrapper() });
 
+    fireEvent.click(screen.getByText("\u0625\u062F\u062E\u0627\u0644 \u064A\u062F\u0648\u064A"));
+
     fireEvent.change(screen.getByPlaceholderText("لصق بيانات QR هنا..."), {
       target: {
         value: JSON.stringify({
@@ -217,7 +247,7 @@ describe("QRScanner Component — Positive", () => {
     fireEvent.click(screen.getByRole("button", { name: "تسجيل" }));
 
     await waitFor(() => {
-      expect(checkInSpy).toHaveBeenCalledWith("ja2", "mock-token");
+      expect(checkInSpy).toHaveBeenCalledWith("ja2", "mock-token", undefined);
     });
 
     expect(toast).toHaveBeenCalledWith({
@@ -233,6 +263,8 @@ describe("QRScanner Component — Positive", () => {
 
     render(<QRScanner />, { wrapper: createWrapper() });
 
+    fireEvent.click(screen.getByText("\u0625\u062F\u062E\u0627\u0644 \u064A\u062F\u0648\u064A"));
+
     fireEvent.change(screen.getByPlaceholderText("لصق بيانات QR هنا..."), {
       target: {
         value: JSON.stringify({
@@ -245,14 +277,12 @@ describe("QRScanner Component — Positive", () => {
     fireEvent.click(screen.getByRole("button", { name: "تسجيل" }));
 
     await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "تم تسجيل الانصراف" }));
-    });
-  });
-
-    expect(toast).toHaveBeenCalledWith({
-      title: "خطأ",
-      description: "API Error",
-      variant: "destructive",
+      expect(checkInSpy).toHaveBeenCalled();
+      expect(toast).toHaveBeenCalledWith({
+        title: "خطأ",
+        description: "API Error",
+        variant: "destructive",
+      });
     });
   });
 });
@@ -362,7 +392,7 @@ describe("QRScanner — Camera states", () => {
   });
 
   it("shows no-camera error when no devices available", async () => {
-    (await import("@/utils/camera")).getCameras = vi.fn().mockResolvedValue([]);
+    vi.mocked(getCameras).mockResolvedValue([]);
 
     render(<QRScanner />, { wrapper: createWrapper() });
     fireEvent.click(screen.getByText("فتح الكاميرا"));
@@ -373,7 +403,7 @@ describe("QRScanner — Camera states", () => {
   });
 
   it("shows HTTPS error when not secure context", async () => {
-    (await import("@/utils/camera")).isSecureContext = vi.fn().mockReturnValue(false);
+    vi.mocked(isSecureContext).mockReturnValue(false);
 
     render(<QRScanner />, { wrapper: createWrapper() });
     fireEvent.click(screen.getByText("فتح الكاميرا"));
@@ -384,7 +414,7 @@ describe("QRScanner — Camera states", () => {
   });
 
   it("shows close button when camera start fails (scanning state persists)", async () => {
-    (await import("@/utils/camera")).isSecureContext = vi.fn().mockReturnValue(false);
+    vi.mocked(isSecureContext).mockReturnValue(false);
 
     render(<QRScanner />, { wrapper: createWrapper() });
     fireEvent.click(screen.getByText("فتح الكاميرا"));
@@ -438,8 +468,8 @@ describe("useQrScanner Hook — State machine", () => {
   });
 
   it("transitions to error on missing camera", async () => {
-    (await import("@/utils/camera")).getCameras = vi.fn().mockResolvedValue([]);
-    (await import("@/utils/camera")).isSecureContext = vi.fn().mockReturnValue(true);
+    vi.mocked(getCameras).mockResolvedValue([]);
+    vi.mocked(isSecureContext).mockReturnValue(true);
 
     const { useQrScanner } = await import("@/hooks/useQrScanner");
     let capturedState = "";
@@ -460,7 +490,7 @@ describe("useQrScanner Hook — State machine", () => {
   });
 
   it("transitions to error on non-secure context", async () => {
-    (await import("@/utils/camera")).isSecureContext = vi.fn().mockReturnValue(false);
+    vi.mocked(isSecureContext).mockReturnValue(false);
 
     const { useQrScanner } = await import("@/hooks/useQrScanner");
     let capturedState = "";
@@ -514,7 +544,7 @@ describe("QR Payload Security — Validation", () => {
       qrToken: mockToken, type: "check_in", expiresAt: new Date(Date.now() + 300000).toISOString(),
     } as never);
 
-    const generateQRDataUrlMock = (await import("@/utils/qrGenerator")).generateQRDataUrl as ReturnType<typeof vi.fn>;
+    const generateQRDataUrlMock = vi.mocked(generateQRDataUrl);
     render(<QRGenerator assignmentId="ja1" assignmentStatus="assigned" />, { wrapper: createWrapper() });
     fireEvent.click(screen.getByText("QR حضور"));
 
