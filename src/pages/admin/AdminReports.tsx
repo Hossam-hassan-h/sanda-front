@@ -8,12 +8,14 @@ import { Pagination } from "@/components/admin/Pagination";
 import { Search } from "@/components/admin/Search";
 import { FilterBar } from "@/components/admin/FilterBar";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import { ErrorState } from "@/components/admin/ErrorState";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Report } from "@/api/types";
+import { toast } from "@/hooks/use-toast";
 
 const statusMeta: Record<string, { label: string; className: string }> = {
   open: { label: "مفتوح", className: "bg-destructive/10 text-destructive border-destructive/20" },
@@ -81,22 +83,50 @@ export default function AdminReports() {
   }, [isLoading, page, totalPages]);
 
   const handleResolve = useCallback(
-    (report: Report) => {
-      updateStatus.mutateAsync({ id: report.id, status: "reviewed" });
+    async (report: Report) => {
+      try {
+        await updateStatus.mutateAsync({ id: report.id, status: "reviewed" });
+        toast({ title: "تم تحديث البلاغ", description: "تم تعيين البلاغ كتمت المراجعة" });
+      } catch (err) {
+        toast({
+          title: "تعذر تحديث البلاغ",
+          description: getApiErrorMessage(err, "حاول مرة أخرى"),
+          variant: "destructive",
+        });
+      }
     },
     [updateStatus],
   );
 
   const handleClose = useCallback(
-    (report: Report) => {
-      updateStatus.mutateAsync({ id: report.id, status: "closed" });
+    async (report: Report) => {
+      try {
+        await updateStatus.mutateAsync({ id: report.id, status: "closed" });
+        toast({ title: "تم إغلاق البلاغ" });
+      } catch (err) {
+        toast({
+          title: "تعذر إغلاق البلاغ",
+          description: getApiErrorMessage(err, "حاول مرة أخرى"),
+          variant: "destructive",
+        });
+      }
     },
     [updateStatus],
   );
 
-  const handleDeleteConfirm = useCallback(() => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
-    deleteReport.mutateAsync(deleteTarget.id).then(() => setDeleteTarget(null));
+    try {
+      await deleteReport.mutateAsync(deleteTarget.id);
+      toast({ title: "تم الحذف", description: "تم حذف البلاغ بنجاح" });
+      setDeleteTarget(null);
+    } catch (err) {
+      toast({
+        title: "خطأ في الحذف",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
+    }
   }, [deleteTarget, deleteReport]);
 
   if (isError) {
@@ -221,12 +251,12 @@ export default function AdminReports() {
                       <div className="flex items-center gap-1">
                         <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`/admin/reports/${r.id}`); }}><Eye className="h-4 w-4" /></Button>
                         {r.status === "open" && (
-                          <Button size="sm" variant="ghost" className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10" onClick={() => handleResolve(r)}><CheckCircle className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="ghost" className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10" onClick={(e) => { e.stopPropagation(); handleResolve(r); }}><CheckCircle className="h-4 w-4" /></Button>
                         )}
                         {r.status !== "closed" && (
-                          <Button size="sm" variant="ghost" className="text-success hover:text-success hover:bg-success/10" onClick={() => handleClose(r)}><XCircle className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="ghost" className="text-success hover:text-success hover:bg-success/10" onClick={(e) => { e.stopPropagation(); handleClose(r); }}><XCircle className="h-4 w-4" /></Button>
                         )}
-                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteTarget(r)}><Trash2 className="h-4 w-4" /></Button>
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setDeleteTarget(r); }}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
                   </CardContent>

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, Bell, Briefcase, Check, Flag, Filter, Info, MessageCircle, ShieldCheck, User } from "lucide-react";
 import AdminLayout from "@/layouts/AdminLayout";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -115,6 +116,19 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllRead.mutateAsync();
+      toast({ title: "تم تحديث الإشعارات", description: "تم تحديد كل الإشعارات كمقروءة" });
+    } catch (err) {
+      toast({
+        title: "فشل تحديث الإشعارات",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="max-w-4xl mx-auto" dir="rtl">
@@ -129,7 +143,7 @@ export default function NotificationsPage() {
             </div>
           </div>
           {unreadCount > 0 && (
-            <Button variant="outline" size="sm" onClick={() => markAllRead.mutate()} className="gap-2">
+            <Button variant="outline" size="sm" onClick={handleMarkAllRead} disabled={markAllRead.isPending} className="gap-2">
               <Check className="w-4 h-4" />
               تحديد الكل كمقروء
             </Button>

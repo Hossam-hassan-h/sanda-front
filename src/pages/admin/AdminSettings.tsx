@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { authApi } from "@/api/auth";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import { Key } from "lucide-react";
 
 export default function AdminSettings() {
@@ -33,8 +34,8 @@ export default function AdminSettings() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch {
-      toast({ title: "خطأ", description: "فشل تغيير كلمة المرور. تحقق من كلمة المرور الحالية", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "خطأ", description: getApiErrorMessage(err, "فشل تغيير كلمة المرور. تحقق من كلمة المرور الحالية"), variant: "destructive" });
     } finally {
       setSaving(false);
     }

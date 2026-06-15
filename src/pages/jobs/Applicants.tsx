@@ -26,6 +26,7 @@ export default function Applicants() {
   const [messagingId, setMessagingId] = useState<string | null>(null);
 
   const handleReject = async (appId: string) => {
+    if (reject.isPending) return;
     try {
       await reject.mutateAsync(appId);
       toast({ title: "Applicant rejected" });
@@ -143,8 +144,8 @@ export default function Applicants() {
                         <Check className="h-4 w-4" />
                         Accept and pay
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleReject(application.id)}>
-                        <X className="h-4 w-4" />
+                      <Button size="sm" variant="outline" onClick={() => handleReject(application.id)} disabled={reject.isPending}>
+                        {reject.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
                         Reject
                       </Button>
                     </div>

@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/layouts/AdminLayout";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -166,7 +167,7 @@ export default function AdminUsers() {
       toast({ title: "تم الحفظ", description: "تم تحديث بيانات المستخدم بنجاح" });
       setEditUserId(null);
     } catch (err) {
-      toast({ title: "خطأ في الحفظ", description: (err as Error)?.message || "حاول مرة أخرى", variant: "destructive" });
+      toast({ title: "خطأ في الحفظ", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
     }
   }, [editUserId, updateUser]);
 

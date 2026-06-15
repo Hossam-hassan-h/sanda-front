@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import UserLayout from "@/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { authApi } from "@/api/auth";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import SkillsInput from "@/components/SkillsInput";
 import { ArrowLeft, User, Loader2 } from "lucide-react";
 
@@ -19,7 +22,30 @@ export default function EditProfile() {
   const [bio, setBio] = useState(user?.bio || "");
   const [city, setCity] = useState(user?.city || "");
   const [skills, setSkills] = useState<string[]>(user?.skills || []);
-  const [loading, setLoading] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      authApi.updateProfile(user!.id, {
+        name,
+        bio,
+        city,
+        skills: user!.role === "worker" ? skills : [],
+      }),
+    onSuccess: () => {
+      toast({
+        title: "تم الحفظ",
+        description: "تم تحديث بيانات ملفك الشخصي بنجاح.",
+      });
+      navigate(`/profile/${user!.id}`);
+    },
+    onError: (err) => {
+      toast({
+        title: "خطأ",
+        description: getApiErrorMessage(err, "فشل في حفظ البيانات الجديدة."),
+        variant: "destructive",
+      });
+    },
+  });
 
   if (!user) {
     return (
@@ -31,37 +57,9 @@ export default function EditProfile() {
     );
   }
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    try {
-      // Simulate saving to API
-      setTimeout(() => {
-        // Mocking user profile update by storing updated data
-        const updatedUser = {
-          ...user,
-          name,
-          bio,
-          city,
-          skills: user.role === "worker" ? skills : [],
-        };
-        localStorage.setItem("sanda_user", JSON.stringify(updatedUser));
-        toast({
-          title: "تم الحفظ",
-          description: "تم تحديث بيانات ملفك الشخصي بنجاح.",
-        });
-        navigate(`/profile/${user.id}`);
-      }, 800);
-    } catch {
-      toast({
-        title: "خطأ",
-        description: "فشل في حفظ البيانات الجديدة.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    mutation.mutate();
   };
 
   return (
@@ -152,8 +150,8 @@ export default function EditProfile() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button type="submit" className="flex-1" disabled={loading}>
-                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "حفظ التغييرات"}
+                <Button type="submit" className="flex-1" disabled={mutation.isPending}>
+                  {mutation.isPending ? <Loader2 className="w-4 h-4 ms-2 animate-spin" /> : "حفظ التغييرات"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => navigate(-1)}>
                   إلغاء
