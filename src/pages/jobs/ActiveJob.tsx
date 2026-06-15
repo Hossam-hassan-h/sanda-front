@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, Clock, CheckCircle, XCircle, User, QrCode } from "lucide-react";
+import { ArrowLeft, Camera, Clock, CheckCircle, XCircle, User, BarChart3 } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,31 @@ export default function ActiveJob() {
   }, [assignments, user, id]);
 
   const backUrl = isEmployer ? "/my-jobs" : "/my-jobs-active";
+
+  const [elapsed, setElapsed] = useState("");
+
+  const updateElapsed = useCallback(() => {
+    if (workerAssignment?.checkInTime && !workerAssignment?.checkOutTime) {
+      const diff = Date.now() - new Date(workerAssignment.checkInTime).getTime();
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      setElapsed(`${h} س ${m} د`);
+    }
+  }, [workerAssignment]);
+
+  useEffect(() => {
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 60000);
+    return () => clearInterval(interval);
+  }, [updateElapsed]);
+
+  const formatDuration = (hours: number | null | undefined) => {
+    if (hours == null) return "—";
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    if (h === 0) return `${m} د`;
+    return `${h} س ${m} د`;
+  };
 
   if (isLoading) {
     return (
@@ -135,6 +160,14 @@ export default function ActiveJob() {
                       </span>
                     </div>
                   )}
+                  {(workerAssignment as Record<string, unknown>)?.workedHours != null && (
+                    <div className="flex items-center justify-between border-t pt-2 mt-2">
+                      <span className="text-muted-foreground font-medium">إجمالي ساعات العمل</span>
+                      <span dir="ltr" className="font-bold text-green-600">
+                        {formatDuration((workerAssignment as Record<string, unknown>)?.workedHours as number | null)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : workerAssignment?.status === "checked-in" ? (
@@ -144,12 +177,16 @@ export default function ActiveJob() {
                 </div>
                 <h2 className="font-heading font-bold text-xl">تم تسجيل الحضور</h2>
                 {workerAssignment.checkInTime && (
-                  <div className="bg-muted rounded-xl p-4 text-sm">
+                  <div className="bg-muted rounded-xl p-4 text-sm space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">وقت الحضور</span>
                       <span dir="ltr" className="font-medium">
                         {new Date(workerAssignment.checkInTime).toLocaleTimeString("ar-EG")}
                       </span>
+                    </div>
+                    <div className="flex items-center justify-between border-t pt-2">
+                      <span className="text-muted-foreground">مدة العمل</span>
+                      <span dir="ltr" className="font-bold text-primary">{elapsed || "جاري الحساب..."}</span>
                     </div>
                   </div>
                 )}
@@ -233,14 +270,22 @@ export default function ActiveJob() {
           )}
         </div>
 
-        <div className="mt-6 flex gap-2 justify-center">
+        <div className="mt-6 flex gap-2 justify-center flex-wrap">
           <Button variant="outline" asChild>
             <Link to="/chat">انتقل للمحادثة</Link>
           </Button>
           {isEmployer && (
-            <Button variant="outline" asChild>
-              <Link to={`/jobs/${job.id}/assignments`}>إدارة الحضور</Link>
-            </Button>
+            <>
+              <Button variant="outline" asChild>
+                <Link to={`/jobs/${job.id}/assignments`}>إدارة الحضور</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to={`/jobs/${job.id}/attendance`}>
+                  <BarChart3 className="w-4 h-4 ml-1" />
+                  تقرير الحضور
+                </Link>
+              </Button>
+            </>
           )}
           {isWorker && (
             <Button variant="outline" asChild>

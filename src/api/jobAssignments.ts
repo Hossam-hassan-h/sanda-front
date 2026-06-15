@@ -124,7 +124,7 @@ export const jobAssignmentsApi = {
       const qrData = JSON.stringify({ assignmentId, type: "check_in", timestamp: Date.now(), secret: "sanda-secret" });
       return mockDelay({ qrToken: btoa(qrData), type: "check_in", expiresAt: new Date(Date.now() + 300000).toISOString() });
     }
-    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-in-qr`);
+    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-in-qr`, {});
     return body as { qrToken: string; type: string; expiresAt: string };
   },
 
@@ -134,25 +134,25 @@ export const jobAssignmentsApi = {
       const qrData = JSON.stringify({ assignmentId, type: "check_out", timestamp: Date.now(), secret: "sanda-secret" });
       return mockDelay({ qrToken: btoa(qrData), type: "check_out", expiresAt: new Date(Date.now() + 300000).toISOString() });
     }
-    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-out-qr`);
+    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-out-qr`, {});
     return body as { qrToken: string; type: string; expiresAt: string };
   },
 
   /** Check-in by scanning QR token (worker) */
-  async checkInWithQR(assignmentId: string, qrToken: string): Promise<JobAssignment> {
+  async checkInWithQR(assignmentId: string, qrToken: string, location?: { lat: number; lng: number }): Promise<JobAssignment> {
     if (USE_MOCKS) {
       return mockDelay(mockAssignments[0]);
     }
-    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-in`, { qrToken });
+    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-in`, { qrToken, location });
     return mapAssignment(body as Record<string, unknown>);
   },
 
   /** Check-out by scanning QR token (worker) */
-  async checkOutWithQR(assignmentId: string, qrToken: string): Promise<JobAssignment> {
+  async checkOutWithQR(assignmentId: string, qrToken: string, location?: { lat: number; lng: number }): Promise<JobAssignment> {
     if (USE_MOCKS) {
       return mockDelay(mockAssignments[0]);
     }
-    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-out`, { qrToken });
+    const { data: body } = await api.post(`/job-assignments/${assignmentId}/check-out`, { qrToken, location });
     return mapAssignment(body as Record<string, unknown>);
   },
 

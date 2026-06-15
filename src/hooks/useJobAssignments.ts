@@ -43,8 +43,8 @@ export const useGenerateCheckOutQR = () =>
 export const useCheckInWithQR = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ assignmentId, qrToken }: { assignmentId: string; qrToken: string }) =>
-      jobAssignmentsApi.checkInWithQR(assignmentId, qrToken),
+    mutationFn: ({ assignmentId, qrToken, location }: { assignmentId: string; qrToken: string; location?: { lat: number; lng: number } }) =>
+      jobAssignmentsApi.checkInWithQR(assignmentId, qrToken, location),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["assignments"] });
       qc.invalidateQueries({ queryKey: ["jobs"] });
@@ -56,8 +56,8 @@ export const useCheckInWithQR = () => {
 export const useCheckOutWithQR = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ assignmentId, qrToken }: { assignmentId: string; qrToken: string }) =>
-      jobAssignmentsApi.checkOutWithQR(assignmentId, qrToken),
+    mutationFn: ({ assignmentId, qrToken, location }: { assignmentId: string; qrToken: string; location?: { lat: number; lng: number } }) =>
+      jobAssignmentsApi.checkOutWithQR(assignmentId, qrToken, location),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["assignments"] });
       qc.invalidateQueries({ queryKey: ["jobs"] });
