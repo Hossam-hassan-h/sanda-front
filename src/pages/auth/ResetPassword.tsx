@@ -1,102 +1,99 @@
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+import { authApi } from "@/api/auth";
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
+import PasswordInput from "@/components/PasswordInput";
+import { Label } from "@/components/ui/label";
 import AuthLayout from "@/layouts/AuthLayout";
 import PasswordResetSteps from "./PasswordResetSteps";
-import { authApi } from "@/api/auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { applyApiErrorsToForm } from "@/lib/api-error";
 import {
   clearResetFlow,
-  getApiErrorMessage,
   RESET_EMAIL_KEY,
   RESET_OTP_KEY,
 } from "@/lib/password-reset";
 
-interface FormValues {
-  newPassword: string;
-  confirmPassword: string;
-}
+const resetPasswordSchema = z.object({
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(1, "Confirm your password"),
+}).refine((values) => values.newPassword === values.confirmPassword, {
+  path: ["confirmPassword"],
+  message: "Passwords do not match",
+});
+
+type FormValues = z.infer<typeof resetPasswordSchema>;
 
 export default function ResetPassword() {
   const navigate = useNavigate();
   const email = localStorage.getItem(RESET_EMAIL_KEY) || "";
   const otp = localStorage.getItem(RESET_OTP_KEY) || "";
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormValues>();
+  const form = useForm<FormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { newPassword: "", confirmPassword: "" },
+  });
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = form;
 
-  if (!email) {
-    return <Navigate to="/forgot-password" replace />;
-  }
-
-  if (!otp) {
-    return <Navigate to="/verify-otp" replace />;
-  }
+  if (!email) return <Navigate to="/forgot-password" replace />;
+  if (!otp) return <Navigate to="/verify-otp" replace />;
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await authApi.resetPassword({
-        email,
-        otp,
-        newPassword: values.newPassword,
-      });
-
+      await authApi.resetPassword({ email, otp, newPassword: values.newPassword });
       clearResetFlow();
-      toast({ title: "تم تغيير كلمة المرور", description: "يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة." });
+      toast({ title: "Password reset successful", description: "You can now sign in with your new password." });
       navigate("/login", { replace: true });
     } catch (error) {
-      const message = getApiErrorMessage(error, "حدث خطأ في الاتصال. حاول مرة أخرى.");
-      toast({
-        title: message.toLowerCase().includes("expired") ? "انتهت صلاحية الرمز" : "رمز غير صحيح",
-        description: message,
-        variant: "destructive",
-      });
+      const message = applyApiErrorsToForm(error, form, "Could not reset the password. Try again.");
+      toast({ title: "Password reset failed", description: message, variant: "destructive" });
     }
   };
 
   return (
-    <AuthLayout title="إعادة تعيين كلمة المرور" subtitle="أنشئ كلمة مرور جديدة لحسابك.">
+    <AuthLayout title="Reset password" subtitle="Create a new password for your account.">
       <PasswordResetSteps currentStep={3} />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <div>
-          <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
-          <Input
+          <Label htmlFor="newPassword">New password</Label>
+          <PasswordInput
             id="newPassword"
-            type="password"
             autoComplete="new-password"
-            placeholder="٨ أحرف على الأقل"
-            {...register("newPassword", {
-              required: "كلمة المرور الجديدة مطلوبة",
-              minLength: { value: 8, message: "كلمة المرور يجب أن تكون ٨ أحرف على الأقل" },
-            })}
+            placeholder="At least 8 characters"
+            aria-invalid={!!errors.newPassword}
+            disabled={isSubmitting}
+            {...register("newPassword")}
           />
-          {errors.newPassword && <p className="mt-1 text-sm text-destructive">{errors.newPassword.message}</p>}
+          <Feedback className="mt-1 justify-start text-start">{errors.newPassword?.message}</Feedback>
         </div>
 
         <div>
-          <Label htmlFor="confirmPassword">تأكيد كلمة المرور</Label>
-          <Input
+          <Label htmlFor="confirmPassword">Confirm password</Label>
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             autoComplete="new-password"
-            placeholder="أعد كتابة كلمة المرور"
-            {...register("confirmPassword", {
-              required: "تأكيد كلمة المرور مطلوب",
-              validate: (value) => value === watch("newPassword") || "كلمتا المرور غير متطابقتين",
-            })}
+            placeholder="Repeat your new password"
+            aria-invalid={!!errors.confirmPassword}
+            disabled={isSubmitting}
+            {...register("confirmPassword")}
           />
-          {errors.confirmPassword && <p className="mt-1 text-sm text-destructive">{errors.confirmPassword.message}</p>}
+          <Feedback className="mt-1 justify-start text-start">{errors.confirmPassword?.message}</Feedback>
         </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "جاري التحديث..." : "تغيير كلمة المرور"}
-        </Button>
+        <FormSubmitButton className="w-full" isPending={isSubmitting} loadingText="Updating...">
+          Change password
+        </FormSubmitButton>
       </form>
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
-        تحتاج رمزًا جديدًا؟{" "}
-        <Link to="/verify-otp" className="font-semibold text-primary hover:underline">العودة إلى الرمز</Link>
+        Need a new code?{" "}
+        <Link to="/verify-otp" className="font-semibold text-primary hover:underline">
+          Back to OTP
+        </Link>
       </p>
     </AuthLayout>
   );

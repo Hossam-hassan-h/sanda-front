@@ -1,34 +1,42 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { Briefcase, ArrowRight, Loader2 } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ArrowRight, Briefcase, Loader2 } from "lucide-react";
+
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
+import LocationPicker from "@/components/LocationPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import LocationPicker from "@/components/LocationPicker";
-import UserLayout from "@/layouts/UserLayout";
-import { useJob, useUpdateJob, useDeleteJob } from "@/hooks/useJobs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { useDeleteJob, useJob, useUpdateJob } from "@/hooks/useJobs";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/utils";
+import UserLayout from "@/layouts/UserLayout";
 import type { JobStatus, Location } from "@/api/types";
 
-interface FormValues {
-  title: string;
-  description: string;
-  category: string;
-  city: string;
-  price: number;
-  hours: number;
-  startDate: string;
-  status: JobStatus;
-}
+const categories = ["Ø¶ÙŠØ§ÙØ© ÙˆÙØ¹Ø§Ù„ÙŠØ§Øª", "ØªÙ†Ø¸ÙŠÙ", "ØµÙŠØ§Ù†Ø© ÙˆØªØ±ÙƒÙŠØ¨Ø§Øª", "Ù…Ø·Ø§Ø¹Ù…", "ØªØ³ÙˆÙŠÙ‚ Ù…ÙŠØ¯Ø§Ù†ÙŠ", "ØªØµÙˆÙŠØ±", "ØªÙˆØµÙŠÙ„"];
+const cities = ["Ø§Ù„Ù‚Ø§Ù‡Ø±Ø©", "Ø§Ù„Ø¬ÙŠØ²Ø©", "Ø§Ù„Ø¥Ø³ÙƒÙ†Ø¯Ø±ÙŠØ©", "Ø§Ù„Ù…Ù†ØµÙˆØ±Ø©"];
 
-const categories = ["ضيافة وفعاليات", "تنظيف", "صيانة وتركيبات", "مطاعم", "تسويق ميداني", "تصوير", "توصيل"];
-const cities = ["القاهرة", "الجيزة", "الإسكندرية", "المنصورة"];
+const editJobSchema = z.object({
+  title: z.string().trim().min(1, "Title is required.").max(150, "Title cannot exceed 150 characters."),
+  description: z.string().trim().min(1, "Description is required.").max(3000, "Description cannot exceed 3000 characters."),
+  category: z.string().trim().min(1, "Choose a category.").max(100, "Category cannot exceed 100 characters."),
+  city: z.string().trim().min(1, "Choose a city.").max(250, "City cannot exceed 250 characters."),
+  price: z.coerce.number({ message: "Enter a valid salary." }).min(0, "Salary cannot be negative."),
+  hours: z.coerce.number({ message: "Enter valid hours." }).min(1, "Duration must be at least 1 hour."),
+  startDate: z.string().trim().min(1, "Start date is required."),
+  status: z.enum(["open", "in-progress", "completed", "cancelled"]),
+});
+
+type FormValues = z.infer<typeof editJobSchema>;
 
 export default function EditJob() {
   const { id = "" } = useParams<{ id: string }>();
@@ -37,86 +45,98 @@ export default function EditJob() {
   const { data: job, isLoading } = useJob(id);
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
-
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isDirty } } = useForm<FormValues>();
-
   const [location, setLocation] = useState<Location>({ address: "", method: "manual" });
+  const [generalError, setGeneralError] = useState("");
 
-  // Hydrate form once job is loaded
+  const form = useForm<FormValues>({
+    resolver: zodResolver(editJobSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      city: "",
+      price: 0,
+      hours: 1,
+      startDate: "",
+      status: "open",
+    },
+  });
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors, isDirty } } = form;
+
   useEffect(() => {
-    if (job) {
-      reset({
-        title: job.title,
-        description: job.description,
-        category: job.category,
-        city: job.city,
-        price: job.price,
-        hours: job.hours,
-        startDate: job.startDate?.slice(0, 16) ?? new Date().toISOString().slice(0, 16),
-        status: job.status,
-      });
-      setLocation({
-        address: job.address,
-        latitude: job.latitude,
-        longitude: job.longitude,
-        method: job.method ?? "manual",
-      });
-    }
+    if (!job) return;
+    reset({
+      title: job.title,
+      description: job.description,
+      category: job.category,
+      city: job.city,
+      price: job.price,
+      hours: job.hours,
+      startDate: job.startDate?.slice(0, 16) ?? new Date().toISOString().slice(0, 16),
+      status: job.status,
+    });
+    setLocation({
+      address: job.address,
+      latitude: job.latitude,
+      longitude: job.longitude,
+      method: job.method ?? "manual",
+    });
+    setGeneralError("");
   }, [job, reset]);
 
-  // Authorisation — only the employer who owns the job may edit
-  if (!isLoading && job && user && job.employerId !== user.id && user.role !== "admin") {
-    return (
-      <UserLayout>
-        <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="font-heading font-extrabold text-2xl mb-2">مش مسموح</h1>
-          <p className="text-muted-foreground">إنت مش صاحب الوظيفة دي.</p>
-          <Button className="mt-4" onClick={() => navigate(`/jobs/${id}`)}>
-            الرجوع للوظيفة
-          </Button>
-        </div>
-      </UserLayout>
-    );
-  }
-
   const onSubmit = async (values: FormValues) => {
+    if (updateJob.isPending) return;
+    setGeneralError("");
     if (!location.address) {
-      toast({ title: "العنوان التفصيلي مطلوب", variant: "destructive" });
+      const message = "Detailed address is required.";
+      setGeneralError(message);
+      toast({ title: "Address required", description: message, variant: "destructive" });
       return;
     }
+
     try {
       await updateJob.mutateAsync({
         id,
         payload: {
           ...values,
+          title: values.title.trim(),
+          description: values.description.trim(),
+          category: values.category.trim(),
+          city: values.city.trim(),
           address: location.address,
           latitude: location.latitude,
           longitude: location.longitude,
           method: location.method,
         },
       });
-      toast({ title: "تم حفظ التعديلات" });
+      toast({ title: "Job updated", description: "Your changes were saved." });
       navigate(`/jobs/${id}`);
-    } catch {
-      toast({ title: "فشل حفظ التعديلات", variant: "destructive" });
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Could not update the job. Please try again.");
+      setGeneralError(message);
+      toast({ title: "Job update failed", description: message, variant: "destructive" });
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm("متأكد إنك عايز تلغي الوظيفة؟ مش هتقدر ترجّعها.")) return;
+    if (deleteJob.isPending) return;
+    if (!confirm("Delete this job? This cannot be undone.")) return;
+    setGeneralError("");
     try {
       await deleteJob.mutateAsync(id);
-      toast({ title: "تم إلغاء الوظيفة" });
+      toast({ title: "Job deleted", description: "The job was removed." });
       navigate("/my-jobs");
-    } catch {
-      toast({ title: "فشل إلغاء الوظيفة", variant: "destructive" });
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Could not delete the job. Please try again.");
+      setGeneralError(message);
+      toast({ title: "Job delete failed", description: message, variant: "destructive" });
     }
   };
 
   if (isLoading) {
     return (
       <UserLayout>
-        <div className="container mx-auto px-4 py-10 max-w-3xl space-y-4">
+        <div className="container mx-auto max-w-3xl space-y-4 px-4 py-10">
           <Skeleton className="h-10 w-2/3" />
           <Skeleton className="h-64 w-full" />
         </div>
@@ -128,10 +148,20 @@ export default function EditJob() {
     return (
       <UserLayout>
         <div className="container mx-auto px-4 py-16 text-center">
-          <h1 className="font-heading font-extrabold text-2xl mb-2">الوظيفة مش موجودة</h1>
-          <Button className="mt-4" onClick={() => navigate("/my-jobs")}>
-            الرجوع لوظائفي
-          </Button>
+          <h1 className="mb-2 font-heading text-2xl font-extrabold">Job not found</h1>
+          <Button type="button" className="mt-4" onClick={() => navigate("/my-jobs")}>Back to my jobs</Button>
+        </div>
+      </UserLayout>
+    );
+  }
+
+  if (user && job.employerId !== user.id && user.role !== "admin") {
+    return (
+      <UserLayout>
+        <div className="container mx-auto px-4 py-16 text-center">
+          <h1 className="mb-2 font-heading text-2xl font-extrabold">Not allowed</h1>
+          <p className="text-muted-foreground">You are not the owner of this job.</p>
+          <Button type="button" className="mt-4" onClick={() => navigate(`/jobs/${id}`)}>Back to job</Button>
         </div>
       </UserLayout>
     );
@@ -141,123 +171,120 @@ export default function EditJob() {
 
   return (
     <UserLayout>
-      <div className="container mx-auto px-4 md:px-6 py-10 max-w-3xl">
-        <div className="flex items-center gap-3 mb-2">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="رجوع">
+      <div className="container mx-auto max-w-3xl px-4 py-10 md:px-6">
+        <div className="mb-2 flex items-center gap-3">
+          <Button type="button" variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Back">
             <ArrowRight className="h-5 w-5" />
           </Button>
-          <div className="w-12 h-12 rounded-xl bg-primary-soft flex items-center justify-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-soft">
             <Briefcase className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="font-heading font-extrabold text-2xl md:text-3xl">تعديل الوظيفة</h1>
-            <p className="text-muted-foreground text-sm">حدّث التفاصيل أو ألغِ الوظيفة لو في تغييرات.</p>
+            <h1 className="font-heading text-2xl font-extrabold md:text-3xl">Edit job</h1>
+            <p className="text-sm text-muted-foreground">Update details or delete this job.</p>
           </div>
         </div>
 
         {job.status === "in-progress" && (
-          <div className="mt-4 bg-warning/10 border border-warning/20 text-warning rounded-xl p-3 text-sm">
-            الوظيفة جارية التنفيذ — التعديلات محدودة. الإلغاء متاح فقط للوظائف المفتوحة.
+          <div className="mt-4 rounded-xl border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
+            This job is in progress. Editing is limited.
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="bg-card border border-border rounded-2xl p-6 md:p-8 mt-6 space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-5 rounded-2xl border border-border bg-card p-6 md:p-8" noValidate>
           <div>
-            <Label htmlFor="title">عنوان الوظيفة *</Label>
-            <Input id="title" {...register("title", { required: "العنوان مطلوب" })} />
-            {errors.title && <p className="text-destructive text-sm mt-1">{errors.title.message}</p>}
+            <Label htmlFor="title">Job title</Label>
+            <Input id="title" disabled={updateJob.isPending || deleteJob.isPending} aria-invalid={!!errors.title} {...register("title")} />
+            <Feedback className="mt-1 justify-start text-start">{errors.title?.message}</Feedback>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <Label>الفئة *</Label>
-              <Select value={watch("category")} onValueChange={(v) => setValue("category", v, { shouldDirty: true, shouldValidate: true })}>
-                <SelectTrigger><SelectValue placeholder="اختر فئة" /></SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
+              <Label>Category</Label>
+              <Select value={watch("category")} disabled={updateJob.isPending || deleteJob.isPending} onValueChange={(value) => setValue("category", value, { shouldDirty: true, shouldValidate: true })}>
+                <SelectTrigger><SelectValue placeholder="Choose category" /></SelectTrigger>
+                <SelectContent>{categories.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent>
               </Select>
-              <input type="hidden" {...register("category", { required: "اختر فئة" })} />
+              <input type="hidden" {...register("category")} />
+              <Feedback className="mt-1 justify-start text-start">{errors.category?.message}</Feedback>
             </div>
             <div>
-              <Label>المدينة *</Label>
-              <Select value={watch("city")} onValueChange={(v) => setValue("city", v, { shouldDirty: true, shouldValidate: true })}>
-                <SelectTrigger><SelectValue placeholder="اختر مدينة" /></SelectTrigger>
-                <SelectContent>
-                  {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
+              <Label>City</Label>
+              <Select value={watch("city")} disabled={updateJob.isPending || deleteJob.isPending} onValueChange={(value) => setValue("city", value, { shouldDirty: true, shouldValidate: true })}>
+                <SelectTrigger><SelectValue placeholder="Choose city" /></SelectTrigger>
+                <SelectContent>{cities.map((city) => <SelectItem key={city} value={city}>{city}</SelectItem>)}</SelectContent>
               </Select>
-              <input type="hidden" {...register("city", { required: "اختر مدينة" })} />
+              <input type="hidden" {...register("city")} />
+              <Feedback className="mt-1 justify-start text-start">{errors.city?.message}</Feedback>
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-xl p-4">
+          <div className="rounded-xl border border-border bg-card p-4">
             <LocationPicker
               value={location}
               onChange={setLocation}
-              addressError={!location.address ? "العنوان التفصيلي مطلوب" : undefined}
+              addressError={!location.address ? "Detailed address is required." : undefined}
             />
           </div>
 
           <div>
-            <Label htmlFor="description">وصف العمل *</Label>
-            <Textarea id="description" rows={5} {...register("description", { required: "الوصف مطلوب" })} />
+            <Label htmlFor="description">Work description</Label>
+            <Textarea id="description" rows={5} disabled={updateJob.isPending || deleteJob.isPending} aria-invalid={!!errors.description} {...register("description")} />
+            <Feedback className="mt-1 justify-start text-start">{errors.description?.message}</Feedback>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
-              <Label htmlFor="price">السعر (جنيه) *</Label>
-              <Input id="price" type="number" min={50} {...register("price", { required: true, valueAsNumber: true, min: 50 })} />
+              <Label htmlFor="price">Salary</Label>
+              <Input id="price" type="number" min={0} disabled={updateJob.isPending || deleteJob.isPending} {...register("price")} />
+              <Feedback className="mt-1 justify-start text-start">{errors.price?.message}</Feedback>
             </div>
             <div>
-              <Label htmlFor="hours">عدد الساعات *</Label>
-              <Input id="hours" type="number" min={1} {...register("hours", { required: true, valueAsNumber: true, min: 1 })} />
+              <Label htmlFor="hours">Hours</Label>
+              <Input id="hours" type="number" min={1} disabled={updateJob.isPending || deleteJob.isPending} {...register("hours")} />
+              <Feedback className="mt-1 justify-start text-start">{errors.hours?.message}</Feedback>
             </div>
             <div>
-              <Label htmlFor="startDate">تاريخ البدء *</Label>
-              <Input id="startDate" type="datetime-local" {...register("startDate", { required: true })} />
+              <Label htmlFor="startDate">Start date</Label>
+              <Input id="startDate" type="datetime-local" disabled={updateJob.isPending || deleteJob.isPending} {...register("startDate")} />
+              <Feedback className="mt-1 justify-start text-start">{errors.startDate?.message}</Feedback>
             </div>
           </div>
 
           {canEditStatus && (
             <div>
-              <Label>الحالة</Label>
-              <Select value={watch("status")} onValueChange={(v) => setValue("status", v as JobStatus, { shouldDirty: true })}>
+              <Label>Status</Label>
+              <Select value={watch("status")} disabled={updateJob.isPending || deleteJob.isPending} onValueChange={(value) => setValue("status", value as JobStatus, { shouldDirty: true, shouldValidate: true })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="open">مفتوحة للتقديم</SelectItem>
-                  <SelectItem value="cancelled">ملغاة</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
               <input type="hidden" {...register("status")} />
             </div>
           )}
 
+          <Feedback>{generalError}</Feedback>
+
           <div className="flex flex-wrap gap-3 pt-2">
-            <Button
-              type="submit"
+            <FormSubmitButton
               variant="accent"
               size="lg"
-              disabled={updateJob.isPending || !isDirty}
+              disabled={!isDirty || deleteJob.isPending}
+              isPending={updateJob.isPending}
+              loadingText="Saving..."
               className={cn(!isDirty && "opacity-60")}
             >
-              {updateJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              حفظ التعديلات
-            </Button>
-            <Button type="button" variant="outline" size="lg" onClick={() => navigate(-1)}>
-              إلغاء
+              Save changes
+            </FormSubmitButton>
+            <Button type="button" variant="outline" size="lg" onClick={() => navigate(-1)} disabled={updateJob.isPending || deleteJob.isPending}>
+              Cancel
             </Button>
             {job.status === "open" && (
-              <Button
-                type="button"
-                variant="destructive"
-                size="lg"
-                className="ms-auto"
-                onClick={handleDelete}
-                disabled={deleteJob.isPending}
-              >
+              <Button type="button" variant="destructive" size="lg" className="ms-auto" onClick={handleDelete} disabled={updateJob.isPending || deleteJob.isPending}>
                 {deleteJob.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                إلغاء الوظيفة
+                Delete job
               </Button>
             )}
           </div>

@@ -1,40 +1,48 @@
 import { useState } from "react";
-import AdminLayout from "@/layouts/AdminLayout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { toast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/AuthContext";
-import { authApi } from "@/api/auth";
 import { Key } from "lucide-react";
+
+import { authApi } from "@/api/auth";
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
+import PasswordInput from "@/components/PasswordInput";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/context/AuthContext";
+import AdminLayout from "@/layouts/AdminLayout";
+import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 export default function AdminSettings() {
   const { user } = useAuth();
-
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePasswordChange = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPasswordError("");
+
     if (newPassword !== confirmPassword) {
-      toast({ title: "خطأ", description: "كلمتا المرور الجديدتان غير متطابقتين", variant: "destructive" });
+      setPasswordError("New passwords do not match.");
       return;
     }
     if (newPassword.length < 8) {
-      toast({ title: "خطأ", description: "كلمة المرور يجب أن تكون ٨ أحرف على الأقل", variant: "destructive" });
+      setPasswordError("New password must be at least 8 characters.");
       return;
     }
+
     setSaving(true);
     try {
       if (user?.id) await authApi.updatePassword(user.id, { currentPassword, newPassword });
-      toast({ title: "تم التحديث", description: "تم تغيير كلمة المرور بنجاح" });
+      toast({ title: "Password changed", description: "Admin password was updated." });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch {
-      toast({ title: "خطأ", description: "فشل تغيير كلمة المرور. تحقق من كلمة المرور الحالية", variant: "destructive" });
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Could not change password. Check the current password.");
+      setPasswordError(message);
+      toast({ title: "Password change failed", description: message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -44,54 +52,55 @@ export default function AdminSettings() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="font-heading font-extrabold text-2xl md:text-3xl mb-1">الإعدادات</h1>
-          <p className="text-muted-foreground">تغيير كلمة المرور وإعدادات الحساب</p>
+          <h1 className="mb-1 font-heading text-2xl font-extrabold md:text-3xl">Settings</h1>
+          <p className="text-muted-foreground">Change password and review account settings.</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <Key className="w-4.5 h-4.5 text-primary" />
-              تغيير كلمة المرور
+            <CardTitle className="flex items-center gap-2 text-base font-bold">
+              <Key className="h-4.5 w-4.5 text-primary" />
+              Change password
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
+            <form onSubmit={handlePasswordChange} className="max-w-md space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">كلمة المرور الحالية</label>
-                <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required placeholder="••••••••" />
+                <label htmlFor="adminCurrentPassword" className="mb-1 block text-sm font-medium">Current password</label>
+                <PasswordInput id="adminCurrentPassword" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} disabled={saving} required placeholder="••••••••" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">كلمة المرور الجديدة</label>
-                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required placeholder="٨ أحرف على الأقل" />
+                <label htmlFor="adminNewPassword" className="mb-1 block text-sm font-medium">New password</label>
+                <PasswordInput id="adminNewPassword" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} disabled={saving} required placeholder="At least 8 characters" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">تأكيد كلمة المرور الجديدة</label>
-                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required placeholder="أعد كتابة كلمة المرور" />
+                <label htmlFor="adminConfirmPassword" className="mb-1 block text-sm font-medium">Confirm new password</label>
+                <PasswordInput id="adminConfirmPassword" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} disabled={saving} required placeholder="Repeat the new password" />
               </div>
-              <Button type="submit" disabled={saving}>
-                {saving ? "جاري الحفظ..." : "حفظ التغييرات"}
-              </Button>
+              <Feedback>{passwordError}</Feedback>
+              <FormSubmitButton isPending={saving} loadingText="Saving...">
+                Save changes
+              </FormSubmitButton>
             </form>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base font-bold">معلومات الحساب</CardTitle>
+            <CardTitle className="text-base font-bold">Account information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">الاسم</span>
+              <span className="text-muted-foreground">Name</span>
               <span className="font-medium">{user?.name}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">البريد الإلكتروني</span>
-              <span className="font-medium">{user?.email || "—"}</span>
+              <span className="text-muted-foreground">Email</span>
+              <span className="font-medium">{user?.email || "-"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">الدور</span>
-              <span className="font-medium">مسؤول</span>
+              <span className="text-muted-foreground">Role</span>
+              <span className="font-medium">Admin</span>
             </div>
           </CardContent>
         </Card>

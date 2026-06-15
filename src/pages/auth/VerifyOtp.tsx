@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import AuthLayout from "@/layouts/AuthLayout";
-import PasswordResetSteps from "./PasswordResetSteps";
+
 import { authApi } from "@/api/auth";
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import AuthLayout from "@/layouts/AuthLayout";
+import PasswordResetSteps from "./PasswordResetSteps";
 import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 import {
-  getApiErrorMessage,
   getOtpCooldownRemaining,
   markOtpSent,
   persistResetOtp,
@@ -15,6 +18,8 @@ import {
   RESET_OTP_KEY,
   setResetStep,
 } from "@/lib/password-reset";
+
+const OTP_LENGTH = 6;
 
 export default function VerifyOtp() {
   const navigate = useNavigate();
@@ -25,23 +30,18 @@ export default function VerifyOtp() {
   const [isResending, setIsResending] = useState(false);
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setCooldown(getOtpCooldownRemaining());
-    }, 1000);
+    const interval = window.setInterval(() => setCooldown(getOtpCooldownRemaining()), 1000);
     return () => window.clearInterval(interval);
   }, []);
 
-  if (!email) {
-    return <Navigate to="/forgot-password" replace />;
-  }
+  if (!email) return <Navigate to="/forgot-password" replace />;
 
   const handleVerify = () => {
     setError("");
     if (!/^\d{6}$/.test(otp)) {
-      setError("اكتب الرمز المكون من 6 أرقام من بريدك الإلكتروني.");
+      setError("Enter the 6-digit code from your email.");
       return;
     }
-
     persistResetOtp(otp);
     setResetStep(3);
     navigate("/reset-password");
@@ -50,9 +50,9 @@ export default function VerifyOtp() {
   const handleResend = async () => {
     const remaining = getOtpCooldownRemaining();
     if (remaining > 0) {
-      const message = `يرجى الانتظار ${remaining} ثانية قبل طلب رمز جديد`;
+      const message = `Try again in ${remaining} seconds.`;
       setError(message);
-      toast({ title: "انتظر قليلًا", description: message, variant: "destructive" });
+      toast({ title: "Please wait", description: message, variant: "destructive" });
       return;
     }
 
@@ -65,57 +65,59 @@ export default function VerifyOtp() {
       await authApi.forgotPassword({ email });
       markOtpSent();
       setCooldown(getOtpCooldownRemaining());
-      toast({ title: "تم إرسال رمز جديد", description: "استخدم آخر رمز وصل إلى بريدك الإلكتروني." });
+      toast({ title: "New OTP sent", description: "Use the latest code from your email." });
     } catch (error) {
-      setError(getApiErrorMessage(error, "حدث خطأ في الاتصال. حاول مرة أخرى."));
-      toast({
-        title: "تعذر إعادة إرسال الرمز",
-        description: getApiErrorMessage(error, "حدث خطأ في الاتصال. حاول مرة أخرى."),
-        variant: "destructive",
-      });
+      const message = getApiErrorMessage(error, "Could not resend the code. Try again.");
+      setError(message);
+      toast({ title: "Could not resend OTP", description: message, variant: "destructive" });
     } finally {
       setIsResending(false);
     }
   };
 
   return (
-    <AuthLayout title="تأكيد الرمز" subtitle={`أرسلنا رمزًا مكونًا من 6 أرقام إلى ${email}.`}>
+    <AuthLayout title="Verify OTP" subtitle={`We sent a 6-digit code to ${email}.`}>
       <PasswordResetSteps currentStep={2} />
 
       <div className="space-y-5">
         <div className="flex justify-center">
           <InputOTP
-            maxLength={6}
+            maxLength={OTP_LENGTH}
             value={otp}
             onChange={(value) => {
               setError("");
-              setOtp(value);
+              setOtp(value.replace(/\D/g, "").slice(0, OTP_LENGTH));
             }}
             inputMode="numeric"
             pattern="[0-9]*"
+            autoComplete="one-time-code"
+            aria-label="Password reset code"
+            disabled={isResending}
           >
-            <InputOTPGroup>
-              {Array.from({ length: 6 }).map((_, index) => (
+            <InputOTPGroup dir="ltr">
+              {Array.from({ length: OTP_LENGTH }).map((_, index) => (
                 <InputOTPSlot key={index} index={index} />
               ))}
             </InputOTPGroup>
           </InputOTP>
         </div>
 
-        {error && <p className="text-center text-sm text-destructive">{error}</p>}
+        <Feedback>{error}</Feedback>
 
-        <Button type="button" className="w-full" onClick={handleVerify} disabled={otp.length !== 6}>
-          متابعة
-        </Button>
+        <FormSubmitButton type="button" className="w-full" onClick={handleVerify} disabled={otp.length !== OTP_LENGTH}>
+          Continue
+        </FormSubmitButton>
 
         <Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={cooldown > 0 || isResending}>
-          {cooldown > 0 ? `إعادة الإرسال خلال ${cooldown}ث` : isResending ? "جاري الإرسال..." : "إعادة إرسال الرمز"}
+          {cooldown > 0 ? `Resend in ${cooldown}s` : isResending ? "Sending..." : "Resend OTP"}
         </Button>
       </div>
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
-        البريد غير صحيح؟{" "}
-        <Link to="/forgot-password" className="font-semibold text-primary hover:underline">ابدأ من جديد</Link>
+        Wrong email?{" "}
+        <Link to="/forgot-password" className="font-semibold text-primary hover:underline">
+          Start again
+        </Link>
       </p>
     </AuthLayout>
   );

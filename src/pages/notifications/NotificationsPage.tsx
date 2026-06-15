@@ -9,6 +9,7 @@ import {
   useNotifications,
 } from "@/hooks/useNotifications";
 import { useAuth } from "@/context/AuthContext";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/hooks/use-toast";
 import type { Notification } from "@/api/types";
 import { cn } from "@/lib/utils";
@@ -64,8 +65,8 @@ export default function NotificationsPage() {
     if (!notification.isRead) {
       try {
         await markRead.mutateAsync(notification.id);
-      } catch {
-        toast({ title: "فشل تحديث الإشعار", variant: "destructive" });
+      } catch (err) {
+        toast({ title: "فشل تحديث الإشعار", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
       }
     }
 

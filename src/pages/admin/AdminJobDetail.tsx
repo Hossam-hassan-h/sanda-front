@@ -21,6 +21,7 @@ import type { Job } from "@/api/types";
 import JobEditModal from "@/components/admin/JobEditModal";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ErrorState } from "@/components/admin/ErrorState";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -180,8 +181,8 @@ export default function AdminJobDetail() {
       await deleteJob.mutateAsync(id!);
       setDeleteOpen(false);
       navigate("/admin/jobs");
-    } catch {
-      toast({ title: "خطأ في الحذف", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "خطأ في الحذف", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
     }
   };
 

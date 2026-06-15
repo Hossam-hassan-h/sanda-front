@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Report } from "@/api/types";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/hooks/use-toast";
 
 const statusMeta: Record<string, { label: string; className: string }> = {
   open: { label: "مفتوح", className: "bg-destructive/10 text-destructive border-destructive/20" },
@@ -76,22 +78,40 @@ export default function AdminReports() {
   }, []);
 
   const handleResolve = useCallback(
-    (report: Report) => {
-      updateStatus.mutateAsync({ id: report.id, status: "reviewed" });
+    async (report: Report) => {
+      if (updateStatus.isPending) return;
+      try {
+        await updateStatus.mutateAsync({ id: report.id, status: "reviewed" });
+        toast({ title: "تم تحديث البلاغ" });
+      } catch (err) {
+        toast({ title: "فشل تحديث البلاغ", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+      }
     },
     [updateStatus],
   );
 
   const handleClose = useCallback(
-    (report: Report) => {
-      updateStatus.mutateAsync({ id: report.id, status: "closed" });
+    async (report: Report) => {
+      if (updateStatus.isPending) return;
+      try {
+        await updateStatus.mutateAsync({ id: report.id, status: "closed" });
+        toast({ title: "تم إغلاق البلاغ" });
+      } catch (err) {
+        toast({ title: "فشل إغلاق البلاغ", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+      }
     },
     [updateStatus],
   );
 
-  const handleDeleteConfirm = useCallback(() => {
-    if (!deleteTarget) return;
-    deleteReport.mutateAsync(deleteTarget.id).then(() => setDeleteTarget(null));
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget || deleteReport.isPending) return;
+    try {
+      await deleteReport.mutateAsync(deleteTarget.id);
+      toast({ title: "تم حذف البلاغ" });
+      setDeleteTarget(null);
+    } catch (err) {
+      toast({ title: "فشل حذف البلاغ", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+    }
   }, [deleteTarget, deleteReport]);
 
   if (isError) {
@@ -99,7 +119,7 @@ export default function AdminReports() {
       <AdminLayout>
         <ErrorState
           title="خطأ في تحميل البلاغات"
-          message={(error as Error)?.message || "حدث خطأ أثناء تحميل البيانات"}
+          message={getApiErrorMessage(error, "حدث خطأ أثناء تحميل البيانات")}
           onRetry={() => refetch()}
         />
       </AdminLayout>

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Eye, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { Conversation } from "@/api/types";
 
 export default function AdminChatMonitor() {
@@ -140,7 +141,7 @@ export default function AdminChatMonitor() {
 
       {isError ? (
         <ErrorState
-          message={(error as Error)?.message ?? "حدث خطأ أثناء تحميل المحادثات"}
+          message={getApiErrorMessage(error, "حدث خطأ أثناء تحميل المحادثات")}
           onRetry={refetch}
         />
       ) : isLoading ? (

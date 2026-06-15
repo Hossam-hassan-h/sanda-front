@@ -1,40 +1,38 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
-import { Modal } from "./Modal";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { Modal } from "@/components/admin/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Job } from "@/api/types";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 const CATEGORIES = ["ضيافة وفعاليات", "تنظيف", "صيانة وتركيبات", "مطاعم", "تسويق ميداني", "تصوير", "توصيل"];
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: Array<{ value: Job["status"]; label: string }> = [
   { value: "open", label: "مفتوحة" },
   { value: "in-progress", label: "قيد التنفيذ" },
   { value: "completed", label: "مكتملة" },
   { value: "cancelled", label: "ملغاة" },
 ];
 
-interface FormState {
-  title: string;
-  price: number;
-  hours: number;
-  status: Job["status"];
-  category: string;
-  city: string;
-  description: string;
-  startDate: string;
-}
+const jobEditSchema = z.object({
+  title: z.string().trim().min(1, "عنوان الوظيفة مطلوب").max(150, "العنوان طويل جدًا"),
+  price: z.coerce.number({ message: "أدخل ميزانية صحيحة" }).min(0, "الميزانية لا يمكن أن تكون سالبة"),
+  hours: z.coerce.number({ message: "أدخل عدد ساعات صحيح" }).min(0, "عدد الساعات لا يمكن أن يكون سالبًا"),
+  status: z.enum(["open", "in-progress", "completed", "cancelled"]),
+  category: z.string().trim().min(1, "اختر فئة"),
+  city: z.string().trim().min(1, "المدينة مطلوبة").max(250, "المدينة طويلة جدًا"),
+  description: z.string().trim().min(1, "الوصف مطلوب").max(3000, "الوصف طويل جدًا"),
+  startDate: z.string().optional(),
+});
 
-interface FormErrors {
-  title?: string;
-  price?: string;
-  hours?: string;
-  category?: string;
-  city?: string;
-  description?: string;
-  startDate?: string;
-}
+type FormState = z.infer<typeof jobEditSchema>;
 
 interface JobEditModalProps {
   open: boolean;
@@ -47,18 +45,6 @@ interface JobEditModalProps {
   showStatus?: boolean;
 }
 
-function validate(form: FormState, showHours: boolean, showStartDate: boolean): FormErrors {
-  const errors: FormErrors = {};
-  if (!form.title.trim()) errors.title = "عنوان الوظيفة مطلوب";
-  if (!form.category) errors.category = "اختر فئة";
-  if (!form.city.trim()) errors.city = "المدينة مطلوبة";
-  if (!form.description.trim()) errors.description = "الوصف مطلوب";
-  if (!form.price || form.price < 50) errors.price = "الميزانية يجب أن تكون 50 جنيه على الأقل";
-  if (showHours && (!form.hours || form.hours < 1)) errors.hours = "عدد الساعات يجب أن يكون 1 على الأقل";
-  if (showStartDate && !form.startDate) errors.startDate = "تاريخ البدء مطلوب";
-  return errors;
-}
-
 export default function JobEditModal({
   open,
   onOpenChange,
@@ -69,189 +55,168 @@ export default function JobEditModal({
   showStartDate = false,
   showStatus = false,
 }: JobEditModalProps) {
-  const [form, setForm] = useState<FormState>({
-    title: "", price: 0, hours: 0, status: "open", category: "", city: "", description: "", startDate: "",
-  });
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [initial, setInitial] = useState<string>("");
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const initialRef = useRef("");
-
-  const toForm = useCallback((j: Job): FormState => ({
-    title: j.title,
-    price: j.price,
-    hours: j.hours ?? 0,
-    status: j.status,
-    category: j.category ?? "",
-    city: j.city ?? "",
-    description: j.description ?? "",
-    startDate: j.startDate ?? "",
-  }), []);
-
-  const formKey = (f: FormState) => JSON.stringify(f);
+  const [error, setError] = useState("");
+  const form = useForm<FormState>({
+    resolver: zodResolver(jobEditSchema),
+    defaultValues: {
+      title: "",
+      price: 0,
+      hours: 0,
+      status: "open",
+      category: "",
+      city: "",
+      description: "",
+      startDate: "",
+    },
+  });
+  const { register, handleSubmit, reset, formState: { errors, isDirty } } = form;
 
   useEffect(() => {
-    if (open && job) {
-      const f = toForm(job);
-      setForm(f);
-      const key = formKey(f);
-      setInitial(key);
-      initialRef.current = key;
-      setErrors({});
-    }
-  }, [open, job, toForm]);
+    if (!open || !job) return;
+    reset({
+      title: job.title ?? "",
+      price: job.price ?? 0,
+      hours: job.hours ?? 0,
+      status: job.status,
+      category: job.category ?? "",
+      city: job.city ?? "",
+      description: job.description ?? "",
+      startDate: job.startDate?.split("T")[0] ?? "",
+    });
+    setError("");
+  }, [open, job, reset]);
 
-  const hasChanges = formKey(form) !== initialRef.current;
-
-  const handleClose = (open: boolean) => {
-    if (!open) {
-      if (hasChanges) { setConfirmOpen(true); return; }
-      onOpenChange(false);
+  const handleClose = (nextOpen: boolean) => {
+    if (isSaving) return;
+    if (!nextOpen && isDirty) {
+      setConfirmOpen(true);
+      return;
     }
+    onOpenChange(nextOpen);
   };
 
-  const handleConfirmDiscard = () => {
-    setConfirmOpen(false);
-    onOpenChange(false);
-  };
-
-  const handleSave = async () => {
-    const validationErrors = validate(form, showHours, showStartDate);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
+  const submit = async (values: FormState) => {
+    if (isSaving) return;
+    setError("");
+    if (showHours && values.hours < 1) {
+      setError("عدد الساعات يجب أن يكون 1 على الأقل");
+      return;
+    }
+    if (showStartDate && !values.startDate) {
+      setError("تاريخ البدء مطلوب");
+      return;
+    }
 
     const payload: Partial<Job> = {
-      title: form.title,
-      price: form.price,
-      hours: form.hours,
-      category: form.category,
-      city: form.city,
-      description: form.description,
+      title: values.title.trim(),
+      price: values.price,
+      category: values.category,
+      city: values.city.trim(),
+      description: values.description.trim(),
     };
-    if (showStartDate) payload.startDate = form.startDate;
-    if (showStatus) payload.status = form.status;
-    await onSave(payload);
-  };
+    if (showHours) payload.hours = values.hours;
+    if (showStartDate) payload.startDate = values.startDate;
+    if (showStatus) payload.status = values.status;
 
-  const set = (field: keyof FormState, value: string | number) => {
-    setForm((f) => ({ ...f, [field]: value }));
-    if (errors[field as keyof FormErrors]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field as keyof FormErrors];
-        return next;
-      });
+    try {
+      await onSave(payload);
+      reset(values);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "تعذر حفظ الوظيفة. حاول مرة أخرى."));
     }
-  };
-
-  const renderError = (field: keyof FormErrors) => {
-    if (!errors[field]) return null;
-    return (
-      <span className="text-xs text-destructive flex items-center gap-1 mt-1">
-        <AlertCircle className="h-3 w-3" /> {errors[field]}
-      </span>
-    );
   };
 
   return (
     <>
       <Modal open={open} onOpenChange={handleClose} title="تعديل الوظيفة" size="lg">
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
           <div className="space-y-2">
-            <Label>عنوان الوظيفة</Label>
-            <Input value={form.title} onChange={(e) => set("title", e.target.value)} />
-            {renderError("title")}
+            <Label htmlFor="admin-job-title">عنوان الوظيفة</Label>
+            <Input id="admin-job-title" disabled={isSaving} aria-invalid={!!errors.title} {...register("title")} />
+            <Feedback className="mt-1 justify-start text-start">{errors.title?.message}</Feedback>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>الفئة</Label>
-              <select
-                value={form.category}
-                onChange={(e) => set("category", e.target.value)}
-                className="h-9 w-full px-3 rounded-md border border-border bg-background text-sm"
-              >
+              <Label htmlFor="admin-job-category">الفئة</Label>
+              <select id="admin-job-category" disabled={isSaving} className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm" {...register("category")}>
                 <option value="">اختر فئة</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
               </select>
-              {renderError("category")}
+              <Feedback className="mt-1 justify-start text-start">{errors.category?.message}</Feedback>
             </div>
             <div className="space-y-2">
-              <Label>المدينة</Label>
-              <Input value={form.city} onChange={(e) => set("city", e.target.value)} />
-              {renderError("city")}
+              <Label htmlFor="admin-job-city">المدينة</Label>
+              <Input id="admin-job-city" disabled={isSaving} aria-invalid={!!errors.city} {...register("city")} />
+              <Feedback className="mt-1 justify-start text-start">{errors.city?.message}</Feedback>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>الميزانية (جنيه)</Label>
-              <Input type="number" value={form.price} onChange={(e) => set("price", Number(e.target.value))} />
-              {renderError("price")}
+              <Label htmlFor="admin-job-price">الميزانية (جنيه)</Label>
+              <Input id="admin-job-price" type="number" min={0} disabled={isSaving} aria-invalid={!!errors.price} {...register("price")} />
+              <Feedback className="mt-1 justify-start text-start">{errors.price?.message}</Feedback>
             </div>
             {showHours && (
               <div className="space-y-2">
-                <Label>عدد الساعات</Label>
-                <Input type="number" value={form.hours} onChange={(e) => set("hours", Number(e.target.value))} />
-                {renderError("hours")}
+                <Label htmlFor="admin-job-hours">عدد الساعات</Label>
+                <Input id="admin-job-hours" type="number" min={1} disabled={isSaving} aria-invalid={!!errors.hours} {...register("hours")} />
+                <Feedback className="mt-1 justify-start text-start">{errors.hours?.message}</Feedback>
               </div>
             )}
             {showStartDate && (
               <div className="space-y-2">
-                <Label>تاريخ البدء</Label>
-                <Input type="date" value={form.startDate?.split("T")[0] ?? ""} onChange={(e) => set("startDate", e.target.value)} />
-                {renderError("startDate")}
+                <Label htmlFor="admin-job-start-date">تاريخ البدء</Label>
+                <Input id="admin-job-start-date" type="date" disabled={isSaving} aria-invalid={!!errors.startDate} {...register("startDate")} />
+                <Feedback className="mt-1 justify-start text-start">{errors.startDate?.message}</Feedback>
               </div>
             )}
             {showStatus && (
               <div className="space-y-2">
-                <Label>الحالة</Label>
-                <select
-                  value={form.status}
-                  onChange={(e) => set("status", e.target.value as Job["status"])}
-                  className="h-9 w-full px-3 rounded-md border border-border bg-background text-sm"
-                >
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
+                <Label htmlFor="admin-job-status">الحالة</Label>
+                <select id="admin-job-status" disabled={isSaving} className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm" {...register("status")}>
+                  {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </div>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label>الوصف</Label>
+            <Label htmlFor="admin-job-description">الوصف</Label>
             <textarea
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              className="h-20 w-full px-3 py-2 rounded-md border border-border bg-background text-sm resize-none"
+              id="admin-job-description"
+              disabled={isSaving}
+              aria-invalid={!!errors.description}
+              className="h-20 w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm"
+              {...register("description")}
             />
-            {renderError("description")}
+            <Feedback className="mt-1 justify-start text-start">{errors.description?.message}</Feedback>
           </div>
 
+          <Feedback>{error}</Feedback>
+
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={() => handleClose(false)}>
+            <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={isSaving}>
               إلغاء
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving && <Loader2 className="h-4 w-4 animate-spin ml-1" />}
+            <FormSubmitButton isPending={isSaving} loadingText="جاري الحفظ...">
               حفظ التغييرات
-            </Button>
+            </FormSubmitButton>
           </div>
-        </div>
+        </form>
       </Modal>
 
       <ConfirmDialog
         open={confirmOpen}
-        onOpenChange={(o) => { if (!o) setConfirmOpen(false); }}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setConfirmOpen(false); }}
         title="تجاهل التغييرات؟"
         description="لديك تغييرات غير محفوظة. هل تريد تجاهلها؟"
         confirmText="تجاهل"
         cancelText="العودة"
         variant="destructive"
-        onConfirm={handleConfirmDiscard}
+        onConfirm={() => { setConfirmOpen(false); onOpenChange(false); }}
       />
     </>
   );

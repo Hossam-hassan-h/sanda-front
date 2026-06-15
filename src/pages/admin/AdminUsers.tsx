@@ -46,6 +46,7 @@ import {
   Star,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 const roleLabel: Record<string, string> = {
   worker: "عامل",
@@ -152,7 +153,7 @@ export default function AdminUsers() {
   }, []);
 
   const handleUpdate = useCallback(async (formData: { name: string; phone: string; email: string; role: User["role"]; city: string }) => {
-    if (!editUserId) return;
+    if (!editUserId || updateUser.isPending) return;
     try {
       await updateUser.mutateAsync({
         id: editUserId,
@@ -161,12 +162,13 @@ export default function AdminUsers() {
       toast({ title: "تم الحفظ", description: "تم تحديث بيانات المستخدم بنجاح" });
       setEditUserId(null);
     } catch (err) {
-      toast({ title: "خطأ في الحفظ", description: (err as Error)?.message || "حاول مرة أخرى", variant: "destructive" });
+      toast({ title: "خطأ في الحفظ", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+      throw err;
     }
   }, [editUserId, updateUser]);
 
   const handleToggleBan = useCallback(async () => {
-    if (!banUserId) return;
+    if (!banUserId || banUser.isPending || unbanUser.isPending) return;
     const target = users.find((u) => u.id === banUserId);
     if (!target) return;
     try {
@@ -178,30 +180,32 @@ export default function AdminUsers() {
         toast({ title: "تم حظر المستخدم" });
       }
       setBanUserId(null);
-    } catch {
-      toast({ title: "حدث خطأ", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "حدث خطأ", description: getApiErrorMessage(err, "تعذر تغيير حالة المستخدم"), variant: "destructive" });
     }
   }, [banUserId, users, banUser, unbanUser]);
 
   const handleToggleVerify = useCallback(
-    (user: User) => {
+    async (user: User) => {
+      if (verifyUser.isPending || unverifyUser.isPending) return;
       try {
-        (user.isVerified ? unverifyUser : verifyUser).mutate(user.id);
-      } catch {
-        toast({ title: "حدث خطأ", description: "تعذر تغيير حالة التوثيق", variant: "destructive" });
+        await (user.isVerified ? unverifyUser : verifyUser).mutateAsync(user.id);
+        toast({ title: user.isVerified ? "تم إلغاء التوثيق" : "تم توثيق المستخدم" });
+      } catch (err) {
+        toast({ title: "حدث خطأ", description: getApiErrorMessage(err, "تعذر تغيير حالة التوثيق"), variant: "destructive" });
       }
     },
     [verifyUser, unverifyUser]
   );
 
   const handleDelete = useCallback(async () => {
-    if (!deleteUserId) return;
+    if (!deleteUserId || deleteUser.isPending) return;
     try {
       await deleteUser.mutateAsync(deleteUserId);
       toast({ title: "تم الحذف", description: "تم حذف المستخدم بنجاح" });
       setDeleteUserId(null);
-    } catch {
-      toast({ title: "خطأ في الحذف", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "خطأ في الحذف", description: getApiErrorMessage(err, "تعذر حذف المستخدم"), variant: "destructive" });
     }
   }, [deleteUserId, deleteUser]);
 
@@ -290,7 +294,7 @@ export default function AdminUsers() {
           <h1 className="font-heading font-extrabold text-3xl mb-2">إدارة المستخدمين</h1>
           <ErrorState
             title="خطأ في تحميل المستخدمين"
-            message={(query.error as Error)?.message || "حدث خطأ أثناء تحميل البيانات"}
+            message={getApiErrorMessage(query.error, "حدث خطأ أثناء تحميل البيانات")}
             onRetry={() => query.refetch()}
           />
         </div>

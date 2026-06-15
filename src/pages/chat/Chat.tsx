@@ -15,6 +15,8 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useSocketConnect } from "@/hooks/useSocket";
 import type { Conversation, Message, UserSummary } from "@/api/types";
+import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 const getId = (item: { id?: string; _id?: string } | string | null | undefined) =>
   typeof item === "string" ? item : item?.id ?? item?._id ?? "";
@@ -43,7 +45,7 @@ export default function Chat() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const { data: messages, isLoading: messagesLoading } = useMessages(activeId ?? "");
   const send = useSendMessage();
-  const { mutate: markConversationRead } = useMarkConversationRead();
+  const markConversationRead = useMarkConversationRead();
   const [text, setText] = useState("");
   const messagesRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +67,10 @@ export default function Chat() {
   }, [conversations, preselectedId, activeId, setSearchParams]);
 
   useEffect(() => {
-    if (activeId) markConversationRead(activeId);
+    if (!activeId || markConversationRead.isPending) return;
+    markConversationRead.mutateAsync(activeId).catch(() => {
+      // Read receipts are best-effort and should not interrupt chat usage.
+    });
   }, [activeId, messages?.length, markConversationRead]);
 
   useEffect(() => {
@@ -77,9 +82,13 @@ export default function Chat() {
   const cancelled = getAssignmentStatus(active) === "cancelled";
 
   const handleSend = async () => {
-    if (!activeId || !text.trim() || cancelled) return;
-    await send.mutateAsync({ conversationId: activeId, content: text.trim() });
-    setText("");
+    if (!activeId || !text.trim() || cancelled || send.isPending) return;
+    try {
+      await send.mutateAsync({ conversationId: activeId, content: text.trim() });
+      setText("");
+    } catch (err) {
+      toast({ title: "تعذر إرسال الرسالة", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+    }
   };
 
   return (
@@ -189,7 +198,7 @@ export default function Chat() {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder={cancelled ? "هذه المحادثة للقراءة فقط" : "اكتب رسالتك..."}
-                  disabled={cancelled}
+                  disabled={cancelled || send.isPending}
                   aria-label="الرسالة"
                 />
                 <Button type="submit" disabled={!text.trim() || send.isPending || cancelled} className="min-h-11" aria-label="إرسال">

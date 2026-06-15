@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { useCreateRating } from "@/hooks/useRatings";
-import { Button } from "@/components/ui/button";
+import { z } from "zod";
+import { Star } from "lucide-react";
+
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
+import RatingStars from "@/components/RatingStars";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import RatingStars from "./RatingStars";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star } from "lucide-react";
+import { useCreateRating } from "@/hooks/useRatings";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface RatingFormProps {
   reviewedUserId: string;
@@ -14,46 +18,48 @@ interface RatingFormProps {
   onSuccess?: () => void;
 }
 
+const ratingSchema = z.object({
+  rating: z.number().int().min(1, "Choose a star rating.").max(5, "Rating cannot exceed 5 stars."),
+  comment: z.string().trim().max(1000, "Comment cannot exceed 1000 characters.").optional(),
+});
+
 export default function RatingForm({
   reviewedUserId,
   reviewedUserName,
   jobId,
   onSuccess,
 }: RatingFormProps) {
-  const [rating, setRating] = useState<number>(0);
-  const [comment, setComment] = useState<string>("");
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState("");
   const createRating = useCreateRating();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (rating === 0) {
-      toast({
-        title: "تنبيه",
-        description: "يرجى تحديد تقييم بالنجوم أولاً",
-        variant: "destructive",
-      });
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (createRating.isPending) return;
+    setError("");
+
+    const parsed = ratingSchema.safeParse({ rating, comment });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message || "Review your rating.");
       return;
     }
 
     try {
       await createRating.mutateAsync({
-        rating,
-        comment,
+        rating: parsed.data.rating,
+        comment: parsed.data.comment || "",
         reviewedUserId,
         jobId,
       });
-      toast({
-        title: "شكراً لك!",
-        description: "تم إرسال تقييمك بنجاح.",
-      });
+      toast({ title: "Rating submitted", description: "Thank you for sharing your experience." });
+      setRating(0);
       setComment("");
       onSuccess?.();
-    } catch {
-      toast({
-        title: "خطأ",
-        description: "فشل في إرسال التقييم، يرجى المحاولة مرة أخرى.",
-        variant: "destructive",
-      });
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Could not submit the rating. Please try again.");
+      setError(message);
+      toast({ title: "Rating failed", description: message, variant: "destructive" });
     }
   };
 
@@ -61,38 +67,37 @@ export default function RatingForm({
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg font-bold">
-          <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-          تقييم {reviewedUserName}
+          <Star className="h-5 w-5 fill-amber-500 text-amber-500" />
+          Rate {reviewedUserName}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col items-center justify-center p-4 bg-muted/30 rounded-xl space-y-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              حدد عدد النجوم
-            </span>
-            <RatingStars rating={rating} onChange={setRating} size={36} editable />
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <div className="flex flex-col items-center justify-center space-y-2 rounded-xl bg-muted/30 p-4">
+            <span className="text-sm font-medium text-muted-foreground">Choose stars</span>
+            <RatingStars rating={rating} onChange={setRating} size={36} editable={!createRating.isPending} />
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-foreground">
-              تعليقك (اختياري)
+            <label htmlFor="rating-comment" className="text-sm font-semibold text-foreground">
+              Comment
             </label>
             <Textarea
+              id="rating-comment"
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="اكتب تفاصيل تجربتك والالتزام بالمواعيد وجودة الخدمة..."
-              className="resize-none h-24"
+              onChange={(event) => setComment(event.target.value)}
+              placeholder="Write details about your experience..."
+              className="h-24 resize-none"
+              maxLength={1000}
+              disabled={createRating.isPending}
             />
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={createRating.isPending}
-          >
-            {createRating.isPending ? "جاري الإرسال..." : "إرسال التقييم"}
-          </Button>
+          <Feedback>{error}</Feedback>
+
+          <FormSubmitButton className="w-full" isPending={createRating.isPending} loadingText="Submitting...">
+            Submit rating
+          </FormSubmitButton>
         </form>
       </CardContent>
     </Card>

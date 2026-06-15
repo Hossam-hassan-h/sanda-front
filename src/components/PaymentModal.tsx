@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { CreditCard, Loader2, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { paymentService, type ApplicationPaymentIntent } from "@/lib/payment";
 import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface PaymentModalProps {
   open: boolean;
@@ -26,45 +28,64 @@ function PaymentForm({
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const getStripeErrorMessage = (message?: string) => {
+    if (!message) return "Payment failed. Please check your payment details.";
+    if (/stripe|secret|client_secret|payment_intent|stack|api key/i.test(message)) {
+      return "Payment failed. Please check your payment details.";
+    }
+    return message;
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements || isSubmitting) return;
 
+    setError("");
     setIsSubmitting(true);
-    const result = await stripe.confirmPayment({
-      elements,
-      redirect: "if_required",
-    });
-
-    if (result.error) {
-      toast({
-        title: "Payment failed",
-        description: result.error.message || "Please check your payment details.",
-        variant: "destructive",
+    try {
+      const result = await stripe.confirmPayment({
+        elements,
+        redirect: "if_required",
       });
+
+      if (result.error) {
+        const message = getStripeErrorMessage(result.error.message);
+        setError(message);
+        toast({ title: "Payment failed", description: message, variant: "destructive" });
+        return;
+      }
+
+      const paymentIntentId = result.paymentIntent?.id || payment.paymentIntentId;
+      await paymentService.syncPaymentIntent(paymentIntentId);
+      toast({
+        title: "Payment successful",
+        description: "The job amount and platform fee are now held in escrow.",
+      });
+      onSuccess?.();
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Payment could not be completed. Please try again.");
+      setError(message);
+      toast({ title: "Payment failed", description: message, variant: "destructive" });
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    const paymentIntentId = result.paymentIntent?.id || payment.paymentIntentId;
-    await paymentService.syncPaymentIntent(paymentIntentId);
-
-    toast({
-      title: "Payment secured",
-      description: "The job amount and platform fee are now held in escrow.",
-    });
-    setIsSubmitting(false);
-    onSuccess?.();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <PaymentElement />
-      <Button type="submit" className="w-full" disabled={!stripe || isSubmitting}>
-        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+      <Feedback>{error}</Feedback>
+      <FormSubmitButton
+        className="w-full"
+        disabled={!stripe}
+        isPending={isSubmitting}
+        loadingText="Processing payment..."
+      >
+        {!isSubmitting && <CreditCard className="h-4 w-4" />}
         Pay {payment.totalAmount} {payment.currency.toUpperCase()}
-      </Button>
+      </FormSubmitButton>
     </form>
   );
 }
@@ -80,6 +101,7 @@ export default function PaymentModal({
   const [payment, setPayment] = useState<ApplicationPaymentIntent | null>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [setupError, setSetupError] = useState("");
 
   useEffect(() => {
     if (!open || !applicationId) return;
@@ -87,6 +109,8 @@ export default function PaymentModal({
     let isMounted = true;
     setIsLoading(true);
     setPayment(null);
+    setStripePromise(null);
+    setSetupError("");
 
     paymentService
       .createApplicationPaymentIntent(applicationId)
@@ -100,12 +124,14 @@ export default function PaymentModal({
         setStripePromise(loadStripe(publishableKey));
       })
       .catch((error) => {
+        if (!isMounted) return;
+        const message = getApiErrorMessage(error, "Payment setup failed. Please try again.");
+        setSetupError(message);
         toast({
           title: "Payment setup failed",
-          description: error instanceof Error ? error.message : "Please try again.",
+          description: message,
           variant: "destructive",
         });
-        onOpenChange(false);
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -125,7 +151,9 @@ export default function PaymentModal({
   const total = payment?.totalAmount ?? Math.round((amount + fee) * 100) / 100;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!isLoading) onOpenChange(nextOpen);
+    }}>
       <DialogContent className="max-w-md w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-center gap-2 text-lg">
@@ -157,6 +185,8 @@ export default function PaymentModal({
               Preparing payment
             </div>
           )}
+
+          <Feedback>{setupError}</Feedback>
 
           {stripePromise && options && payment && (
             <Elements stripe={stripePromise} options={options}>

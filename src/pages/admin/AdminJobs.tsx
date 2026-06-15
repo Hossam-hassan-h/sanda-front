@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useJobsQuery, useUpdateJob, useDeleteJob } from "@/hooks/useAdminQueries";
 import type { Job, JobStatus } from "@/api/types";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { toast } from "@/hooks/use-toast";
 
 const CATEGORIES = [
   "ضيافة وفعاليات",
@@ -88,18 +90,25 @@ export default function AdminJobs() {
   }, []);
 
   const handleEditSave = async (formData: Partial<Job>) => {
-    if (!editJobId) return;
-    await updateJob.mutateAsync({ id: editJobId, payload: formData });
-    setEditJobId(null);
+    if (!editJobId || updateJob.isPending) return;
+    try {
+      await updateJob.mutateAsync({ id: editJobId, payload: formData });
+      toast({ title: "تم حفظ التعديلات" });
+      setEditJobId(null);
+    } catch (err) {
+      toast({ title: "فشل حفظ التعديلات", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+      throw err;
+    }
   };
 
   const handleDelete = useCallback(async () => {
-    if (!deleteJobId) return;
+    if (!deleteJobId || deleteJob.isPending) return;
     try {
       await deleteJob.mutateAsync(deleteJobId);
+      toast({ title: "تم حذف الوظيفة" });
       setDeleteJobId(null);
-    } catch {
-      // error handled by useDeleteJob onError
+    } catch (err) {
+      toast({ title: "فشل حذف الوظيفة", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
     }
   }, [deleteJobId, deleteJob]);
 
@@ -184,7 +193,7 @@ export default function AdminJobs() {
         <h1 className="font-heading font-extrabold text-2xl md:text-3xl mb-2">إدارة الوظائف</h1>
         <ErrorState
           title="خطأ في تحميل الوظائف"
-          message={(query.error as Error)?.message || "حدث خطأ أثناء تحميل البيانات"}
+          message={getApiErrorMessage(query.error, "حدث خطأ أثناء تحميل البيانات")}
           onRetry={() => query.refetch()}
         />
       </AdminLayout>

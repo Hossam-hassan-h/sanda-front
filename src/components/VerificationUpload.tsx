@@ -1,18 +1,25 @@
 import { useRef, useState } from "react";
-import { Upload, CheckCircle2, ShieldCheck, Loader2, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { toast } from "@/hooks/use-toast";
-import { Label } from "@/components/ui/label";
-import { useAuth } from "@/context/AuthContext";
+import { CheckCircle2, ShieldCheck, Upload, User } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+
 import { authApi } from "@/api/auth";
 import { USE_MOCKS } from "@/api/client";
 import type { VerificationDocument } from "@/api/types";
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface VerificationUploadProps {
   onSuccess?: () => void;
 }
+
+const STORAGE_KEY = "sanda_verification_requests";
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function FileUploadZone({
   refObject,
@@ -21,6 +28,7 @@ function FileUploadZone({
   fileName,
   placeholder,
   icon: Icon,
+  disabled,
 }: {
   refObject: React.RefObject<HTMLInputElement>;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -28,6 +36,7 @@ function FileUploadZone({
   fileName: string | null;
   placeholder: string;
   icon: React.ElementType;
+  disabled?: boolean;
 }) {
   const IconComponent = Icon;
   return (
@@ -35,12 +44,16 @@ function FileUploadZone({
       <Label className="text-sm font-bold">{label}</Label>
       <div
         role="button"
-        tabIndex={0}
-        className="border border-dashed rounded-xl p-4 flex flex-col items-center justify-center hover:bg-muted/30 cursor-pointer"
-        onClick={() => refObject.current?.click()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
+        tabIndex={disabled ? -1 : 0}
+        aria-disabled={disabled}
+        className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed p-4 hover:bg-muted/30 aria-disabled:cursor-not-allowed aria-disabled:opacity-60"
+        onClick={() => {
+          if (!disabled) refObject.current?.click();
+        }}
+        onKeyDown={(event) => {
+          if (disabled) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
             refObject.current?.click();
           }
         }}
@@ -48,21 +61,19 @@ function FileUploadZone({
         <input
           ref={refObject}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           onChange={onChange}
           className="sr-only"
+          disabled={disabled}
         />
-        <IconComponent className="w-8 h-8 text-muted-foreground mb-2" />
-        <span className="text-xs font-semibold">
-          {fileName || placeholder}
-        </span>
-        <span className="text-[10px] text-muted-foreground mt-1">PNG, JPG حتى 5MB</span>
+        <IconComponent className="mb-2 h-8 w-8 text-muted-foreground" />
+        <span className="text-xs font-semibold">{fileName || placeholder}</span>
+        <span className="mt-1 text-[10px] text-muted-foreground">PNG, JPG حتى 5MB</span>
       </div>
     </div>
   );
 }
 
-/** Convert a File to a base64 data URL so it can be stored in localStorage */
 function readFileAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -72,21 +83,13 @@ function readFileAsDataURL(file: File): Promise<string> {
   });
 }
 
-const STORAGE_KEY = "sanda_verification_requests";
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
-/** Save the verification request both to the user (in localStorage) and to a global map for admins */
-function persistVerificationRequest(
-  userId: string,
-  documents: VerificationDocument[]
-) {
+function persistVerificationRequest(userId: string, documents: VerificationDocument[]) {
   const request = {
     status: "pending" as const,
     documents,
     submittedAt: new Date().toISOString(),
   };
 
-  // Update the user's localStorage profile
   try {
     const stored = localStorage.getItem("sanda_user");
     if (stored) {
@@ -95,17 +98,16 @@ function persistVerificationRequest(
       localStorage.setItem("sanda_user", JSON.stringify(user));
     }
   } catch {
-    // Ignore parse errors
+    // Keep upload success even if legacy local cache cannot be updated.
   }
 
-  // Save to global map (so admins can see all pending requests)
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     const map: Record<string, typeof request> = stored ? JSON.parse(stored) : {};
     map[userId] = request;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   } catch {
-    // Ignore
+    // Admin fallback cache is best-effort only.
   }
 }
 
@@ -119,39 +121,52 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
   const [nationalIdBack, setNationalIdBack] = useState<File | null>(null);
   const [personalPhoto, setPersonalPhoto] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
   const [step, setStep] = useState<"upload" | "pending">("upload");
 
-  const handleUploadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateFile = (file: File) => {
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) return "Only JPG, PNG, or WebP images are supported.";
+    if (file.size > MAX_FILE_SIZE) return "Each image must be 5MB or smaller.";
+    return "";
+  };
+
+  const setValidatedFile = (file: File | undefined, setter: (file: File | null) => void) => {
+    if (!file) return;
+    const message = validateFile(file);
+    if (message) {
+      setError(message);
+      toast({ title: "Invalid file", description: message, variant: "destructive" });
+      return;
+    }
+    setError("");
+    setter(file);
+  };
+
+  const handleUploadSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (uploading) return;
+    setError("");
+
     if (!nationalIdFront || !nationalIdBack) {
-      toast({
-        title: "الملفات ناقصة",
-        description: "يرجى رفع صور بطاقة الرقم القومي (أمام وخلف).",
-        variant: "destructive",
-      });
+      const message = "يرجى رفع صور بطاقة الرقم القومي (أمام وخلف).";
+      setError(message);
+      toast({ title: "الملفات ناقصة", description: message, variant: "destructive" });
       return;
     }
     if (!user) return;
 
     const selectedFiles = [nationalIdFront, nationalIdBack, personalPhoto].filter(Boolean) as File[];
-    const oversizedFile = selectedFiles.find((file) => file.size > MAX_FILE_SIZE);
-    if (oversizedFile) {
-      toast({
-        title: "Ø§Ù„Ù…Ù„Ù ÙƒØ¨ÙŠØ± Ø¬Ø¯Ù‹Ø§",
-        description: "Ø§Ù„Ø­Ø¯ Ø§Ù„Ø£Ù‚ØµÙ‰ Ù„ÙƒÙ„ ØµÙˆØ±Ø© Ù‡Ùˆ 5MB.",
-        variant: "destructive",
-      });
+    const invalidFileMessage = selectedFiles.map(validateFile).find(Boolean);
+    if (invalidFileMessage) {
+      setError(invalidFileMessage);
+      toast({ title: "Invalid file", description: invalidFileMessage, variant: "destructive" });
       return;
     }
 
     setUploading(true);
-
     try {
       if (!USE_MOCKS) {
-        await authApi.uploadVerificationDocuments(user.id, {
-          nationalIdFront,
-          nationalIdBack,
-        });
+        await authApi.uploadVerificationDocuments(user.id, { nationalIdFront, nationalIdBack });
       }
 
       const now = new Date().toISOString();
@@ -173,6 +188,7 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
           uploadedAt: now,
         },
       ];
+
       if (personalPhoto) {
         documents.push({
           id: `vd-${Date.now()}-photo`,
@@ -185,22 +201,15 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
       }
 
       persistVerificationRequest(user.id, documents);
-      // Refresh user so the page updates immediately
-      updateUser({ verificationRequest: { status: "pending", documents, submittedAt: new Date().toISOString() } });
+      updateUser({ verificationRequest: { status: "pending", documents, submittedAt: now } });
       queryClient.invalidateQueries({ queryKey: ["user"] });
-
       setStep("pending");
-      toast({
-        title: "تم رفع المستندات",
-        description: "جاري مراجعة مستنداتك من قبل الإدارة. سيتم تفعيل حسابك خلال ٢٤ ساعة.",
-      });
+      toast({ title: "Documents uploaded", description: "Your verification documents are now pending review." });
       onSuccess?.();
-    } catch (err) {
-      toast({
-        title: "فشل الرفع",
-        description: "حصل خطأ أثناء رفع المستندات. حاول مرة تانية.",
-        variant: "destructive",
-      });
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Could not upload documents. Please try again.");
+      setError(message);
+      toast({ title: "Upload failed", description: message, variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -210,75 +219,65 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
     <Card className="w-full text-right" dir="rtl">
       <CardContent className="p-6">
         {step === "upload" ? (
-          <form onSubmit={handleUploadSubmit} className="space-y-6">
+          <form onSubmit={handleUploadSubmit} className="space-y-6" noValidate>
             <div className="space-y-2">
-              <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-primary" />
+              <h3 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                <ShieldCheck className="h-5 w-5 text-primary" />
                 رفع مستندات التوثيق والأمان
               </h3>
               <p className="text-xs text-muted-foreground">
-                لكي تتمكن من العمل واستلام مبالغ الضمان، يجب تقديم وثائق إثبات الهوية الشخصية.
+                ارفع مستندات الهوية حتى يتمكن فريق الإدارة من مراجعة حسابك.
               </p>
             </div>
 
             <FileUploadZone
               refObject={frontRef}
-              onChange={(e) => {
-                if (e.target.files?.[0]) setNationalIdFront(e.target.files[0]);
-              }}
+              onChange={(event) => setValidatedFile(event.target.files?.[0], setNationalIdFront)}
               label="صورة بطاقة الرقم القومي (من الأمام)"
               fileName={nationalIdFront?.name ?? null}
               placeholder="اضغط لرفع الصورة (أمام)"
               icon={Upload}
+              disabled={uploading}
             />
 
             <FileUploadZone
               refObject={backRef}
-              onChange={(e) => {
-                if (e.target.files?.[0]) setNationalIdBack(e.target.files[0]);
-              }}
+              onChange={(event) => setValidatedFile(event.target.files?.[0], setNationalIdBack)}
               label="صورة بطاقة الرقم القومي (من الخلف)"
               fileName={nationalIdBack?.name ?? null}
               placeholder="اضغط لرفع الصورة (خلف)"
               icon={Upload}
+              disabled={uploading}
             />
 
             <FileUploadZone
               refObject={photoRef}
-              onChange={(e) => {
-                if (e.target.files?.[0]) setPersonalPhoto(e.target.files[0]);
-              }}
+              onChange={(event) => setValidatedFile(event.target.files?.[0], setPersonalPhoto)}
               label="صورة شخصية واضحة (اختياري)"
               fileName={personalPhoto?.name ?? null}
               placeholder="اضغط لرفع الصورة الشخصية"
               icon={User}
+              disabled={uploading}
             />
 
-            <Button type="submit" className="w-full py-5 font-bold" disabled={uploading}>
-              {uploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  جاري رفع الملفات وتشفيرها...
-                </>
-              ) : (
-                "إرسال المستندات للمراجعة"
-              )}
-            </Button>
+            <Feedback>{error}</Feedback>
+
+            <FormSubmitButton className="w-full py-5 font-bold" isPending={uploading} loadingText="جاري رفع الملفات وتشفيرها...">
+              إرسال المستندات للمراجعة
+            </FormSubmitButton>
           </form>
         ) : (
-          <div className="text-center py-6 space-y-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-              <ShieldCheck className="w-8 h-8 text-blue-600 animate-pulse" />
+          <div className="space-y-4 py-6 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+              <ShieldCheck className="h-8 w-8 animate-pulse text-blue-600" />
             </div>
             <div className="space-y-1">
-              <h3 className="font-bold text-lg text-foreground">المستندات قيد المراجعة</h3>
-              <p className="text-sm text-muted-foreground">
-                تم استلام مستندات التوثيق بنجاح وجاري تدقيقها حالياً.
-              </p>
+              <h3 className="text-lg font-bold text-foreground">المستندات قيد المراجعة</h3>
+              <p className="text-sm text-muted-foreground">تم استلام مستندات التوثيق بنجاح وجاري تدقيقها حالياً.</p>
             </div>
-            <div className="flex items-center gap-1.5 p-3 rounded-lg bg-blue-50/50 border border-blue-100 text-xs text-blue-800 text-right">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-blue-600" />
-              <span>سنرسل لك إشعاراً فور تفعيل الشارة الخضراء (موثق) على حسابك.</span>
+            <div className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50/50 p-3 text-right text-xs text-blue-800">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-blue-600" />
+              <span>سيصلك إشعار عند اكتمال مراجعة الإدارة.</span>
             </div>
           </div>
         )}

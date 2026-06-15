@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
-import AuthLayout from "@/layouts/AuthLayout";
+
 import { authApi } from "@/api/auth";
-import { Button } from "@/components/ui/button";
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/password-reset";
 import { useAuth } from "@/context/AuthContext";
+import AuthLayout from "@/layouts/AuthLayout";
+import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 const ACCOUNT_VERIFY_EMAIL_KEY = "account_verify_email";
+const OTP_LENGTH = 6;
 
 export default function VerifyEmail() {
   const navigate = useNavigate();
@@ -18,14 +21,12 @@ export default function VerifyEmail() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!email) {
-    return <Navigate to="/register" replace />;
-  }
+  if (!email) return <Navigate to="/register" replace />;
 
   const handleVerify = async () => {
     setError("");
     if (!/^\d{6}$/.test(otp)) {
-      setError("اكتب رمز التحقق المكون من 6 أرقام.");
+      setError("Enter the 6-digit verification code.");
       return;
     }
 
@@ -35,44 +36,54 @@ export default function VerifyEmail() {
       updateUser(user);
       localStorage.setItem("sanda_user", JSON.stringify(user));
       localStorage.removeItem(ACCOUNT_VERIFY_EMAIL_KEY);
-      toast({ title: "تم تأكيد البريد الإلكتروني", description: "يمكنك الآن استخدام حسابك." });
+      toast({ title: "Email verified", description: "Your account is ready." });
       navigate("/jobs", { replace: true });
     } catch (error) {
-      const message = getApiErrorMessage(error, "تعذر تأكيد البريد الإلكتروني. حاول مرة أخرى.");
+      const message = getApiErrorMessage(error, "Could not verify your email. Try again.");
       setError(message);
-      toast({ title: "رمز غير صحيح", description: message, variant: "destructive" });
+      toast({ title: "Invalid OTP", description: message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <AuthLayout title="تأكيد البريد الإلكتروني" subtitle={`أرسلنا رمز تحقق مكون من 6 أرقام إلى ${email}.`}>
+    <AuthLayout title="Verify email" subtitle={`We sent a 6-digit code to ${email}.`}>
       <div className="space-y-5">
         <div className="flex justify-center">
           <InputOTP
-            maxLength={6}
+            maxLength={OTP_LENGTH}
             value={otp}
             onChange={(value) => {
               setError("");
-              setOtp(value);
+              setOtp(value.replace(/\D/g, "").slice(0, OTP_LENGTH));
             }}
             inputMode="numeric"
             pattern="[0-9]*"
+            autoComplete="one-time-code"
+            aria-label="Email verification code"
+            disabled={isSubmitting}
           >
-            <InputOTPGroup>
-              {Array.from({ length: 6 }).map((_, index) => (
+            <InputOTPGroup dir="ltr">
+              {Array.from({ length: OTP_LENGTH }).map((_, index) => (
                 <InputOTPSlot key={index} index={index} />
               ))}
             </InputOTPGroup>
           </InputOTP>
         </div>
 
-        {error && <p className="text-center text-sm text-destructive">{error}</p>}
+        <Feedback>{error}</Feedback>
 
-        <Button type="button" className="w-full" onClick={handleVerify} disabled={otp.length !== 6 || isSubmitting}>
-          {isSubmitting ? "جاري التأكيد..." : "تأكيد البريد الإلكتروني"}
-        </Button>
+        <FormSubmitButton
+          type="button"
+          className="w-full"
+          onClick={handleVerify}
+          disabled={otp.length !== OTP_LENGTH}
+          isPending={isSubmitting}
+          loadingText="Verifying..."
+        >
+          Verify email
+        </FormSubmitButton>
       </div>
     </AuthLayout>
   );

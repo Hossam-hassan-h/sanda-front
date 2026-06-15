@@ -1,24 +1,26 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
-import { Modal } from "./Modal";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import PhoneInput from "react-phone-number-input/input";
+
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
+import { Modal } from "@/components/admin/Modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import PhoneInput from "react-phone-number-input/input";
 import type { User } from "@/api/types";
+import { getApiErrorMessage } from "@/lib/api-error";
 
-interface EditUserForm {
-  name: string;
-  phone: string;
-  email: string;
-  role: User["role"];
-  city: string;
-}
+const editUserSchema = z.object({
+  name: z.string().trim().min(1, "الاسم مطلوب").max(100, "الاسم طويل جدًا"),
+  phone: z.string().trim().optional(),
+  email: z.string().trim().min(1, "البريد الإلكتروني مطلوب").email("البريد الإلكتروني غير صالح"),
+  role: z.enum(["worker", "employer", "admin"]),
+  city: z.string().trim().max(200, "المدينة طويلة جدًا").optional(),
+});
 
-interface FormErrors {
-  name?: string;
-  email?: string;
-  phone?: string;
-}
+type EditUserForm = z.infer<typeof editUserSchema>;
 
 interface EditUserModalProps {
   open: boolean;
@@ -28,134 +30,122 @@ interface EditUserModalProps {
   isSaving: boolean;
 }
 
-function validate(form: EditUserForm): FormErrors {
-  const errors: FormErrors = {};
-  if (!form.name.trim()) errors.name = "الاسم مطلوب";
-  if (!form.email.trim()) {
-    errors.email = "البريد الإلكتروني مطلوب";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = "البريد الإلكتروني غير صالح";
-  }
-  return errors;
-}
-
 export default function EditUserModal({ open, onOpenChange, user, onSave, isSaving }: EditUserModalProps) {
-  const [form, setForm] = useState<EditUserForm>({ name: "", phone: "", email: "", role: "worker", city: "" });
-  const [errors, setErrors] = useState<FormErrors>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const initialRef = useRef("");
-
-  const toForm = useCallback((u: NonNullable<typeof user>): EditUserForm => ({
-    name: u.name,
-    phone: u.phone ?? "",
-    email: u.email,
-    role: u.role,
-    city: u.city ?? "",
-  }), []);
+  const [error, setError] = useState("");
+  const form = useForm<EditUserForm>({
+    resolver: zodResolver(editUserSchema),
+    defaultValues: { name: "", phone: "", email: "", role: "worker", city: "" },
+  });
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isDirty } } = form;
 
   useEffect(() => {
-    if (open && user) {
-      const f = toForm(user);
-      setForm(f);
-      initialRef.current = JSON.stringify(f);
-      setErrors({});
-    }
-  }, [open, user, toForm]);
+    if (!open || !user) return;
+    reset({
+      name: user.name ?? "",
+      phone: user.phone ?? "",
+      email: user.email ?? "",
+      role: user.role,
+      city: user.city ?? "",
+    });
+    setError("");
+  }, [open, reset, user]);
 
-  const hasChanges = JSON.stringify(form) !== initialRef.current;
-
-  const handleClose = (open: boolean) => {
-    if (!open) {
-      if (hasChanges) { setConfirmOpen(true); return; }
-      onOpenChange(false);
+  const handleClose = (nextOpen: boolean) => {
+    if (isSaving) return;
+    if (!nextOpen && isDirty) {
+      setConfirmOpen(true);
+      return;
     }
+    onOpenChange(nextOpen);
   };
 
-  const handleSave = async () => {
-    const validationErrors = validate(form);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
-    await onSave(form);
-  };
-
-  const set = (field: keyof EditUserForm, value: string) => {
-    setForm((f) => ({ ...f, [field]: value }));
-    if (errors[field as keyof FormErrors]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field as keyof FormErrors];
-        return next;
+  const submit = async (values: EditUserForm) => {
+    if (isSaving) return;
+    setError("");
+    try {
+      await onSave({
+        ...values,
+        name: values.name.trim(),
+        email: values.email.trim(),
+        phone: values.phone?.trim() || "",
+        city: values.city?.trim() || "",
       });
+      reset(values);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "تعذر حفظ بيانات المستخدم. حاول مرة أخرى."));
     }
-  };
-
-  const renderError = (field: keyof FormErrors) => {
-    if (!errors[field]) return null;
-    return (
-      <span className="text-xs text-destructive flex items-center gap-1 mt-1">
-        <AlertCircle className="h-3 w-3" /> {errors[field]}
-      </span>
-    );
   };
 
   return (
     <>
       <Modal open={open} onOpenChange={handleClose} title="تعديل المستخدم" size="md">
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
           <div>
-            <label className="block text-sm font-medium mb-1">الاسم</label>
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="اسم المستخدم" />
-            {renderError("name")}
+            <label htmlFor="admin-user-name" className="mb-1 block text-sm font-medium">الاسم</label>
+            <Input id="admin-user-name" disabled={isSaving} aria-invalid={!!errors.name} {...register("name")} />
+            <Feedback className="mt-1 justify-start text-start">{errors.name?.message}</Feedback>
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-1">رقم الهاتف</label>
+            <label htmlFor="admin-user-phone" className="mb-1 block text-sm font-medium">رقم الهاتف</label>
             <PhoneInput
+              id="admin-user-phone"
               defaultCountry="EG"
               countries={["EG"]}
-              value={form.phone}
-              onChange={(value) => set("phone", value || "")}
+              value={watch("phone") || ""}
+              onChange={(value) => setValue("phone", value || "", { shouldDirty: true, shouldValidate: true })}
               placeholder="01xxxxxxxxx"
+              disabled={isSaving}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
-            {renderError("phone")}
+            <Feedback className="mt-1 justify-start text-start">{errors.phone?.message}</Feedback>
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-1">البريد الإلكتروني</label>
-            <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="user@example.com" className="ltr text-end" />
-            {renderError("email")}
+            <label htmlFor="admin-user-email" className="mb-1 block text-sm font-medium">البريد الإلكتروني</label>
+            <Input id="admin-user-email" type="email" disabled={isSaving} aria-invalid={!!errors.email} className="ltr text-end" {...register("email")} />
+            <Feedback className="mt-1 justify-start text-start">{errors.email?.message}</Feedback>
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-1">النوع</label>
+            <label htmlFor="admin-user-role" className="mb-1 block text-sm font-medium">النوع</label>
             <select
-              value={form.role}
-              onChange={(e) => set("role", e.target.value as User["role"])}
-              className="h-10 px-3 rounded-md border border-border bg-background text-sm w-full"
+              id="admin-user-role"
+              disabled={isSaving}
+              className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+              {...register("role")}
             >
               <option value="worker">عامل</option>
               <option value="employer">صاحب عمل</option>
               <option value="admin">مسؤول</option>
             </select>
           </div>
+
           <div>
-            <label className="block text-sm font-medium mb-1">المدينة</label>
-            <Input value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="المدينة" />
+            <label htmlFor="admin-user-city" className="mb-1 block text-sm font-medium">المدينة</label>
+            <Input id="admin-user-city" disabled={isSaving} aria-invalid={!!errors.city} {...register("city")} />
+            <Feedback className="mt-1 justify-start text-start">{errors.city?.message}</Feedback>
           </div>
+
+          <Feedback>{error}</Feedback>
+
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => { if (hasChanges) { setConfirmOpen(true); return; } onOpenChange(false); }}>
+            <Button type="button" variant="outline" onClick={() => handleClose(false)} disabled={isSaving}>
               إلغاء
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving && <Loader2 className="h-4 w-4 animate-spin ml-1" />}
+            <FormSubmitButton isPending={isSaving} loadingText="جاري الحفظ...">
               حفظ التغييرات
-            </Button>
+            </FormSubmitButton>
           </div>
-        </div>
+        </form>
       </Modal>
 
       <Modal open={confirmOpen} onOpenChange={setConfirmOpen} title="تجاهل التغييرات؟" size="sm">
-        <p className="text-sm text-muted-foreground mb-4">لديك تغييرات غير محفوظة. هل تريد تجاهلها؟</p>
+        <p className="mb-4 text-sm text-muted-foreground">لديك تغييرات غير محفوظة. هل تريد تجاهلها؟</p>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setConfirmOpen(false)}>العودة</Button>
-          <Button variant="destructive" onClick={() => { setConfirmOpen(false); onOpenChange(false); }}>تجاهل</Button>
+          <Button type="button" variant="outline" onClick={() => setConfirmOpen(false)}>العودة</Button>
+          <Button type="button" variant="destructive" onClick={() => { setConfirmOpen(false); onOpenChange(false); }}>تجاهل</Button>
         </div>
       </Modal>
     </>

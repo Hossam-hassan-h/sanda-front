@@ -1,71 +1,96 @@
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import AuthLayout from "@/layouts/AuthLayout";
-import { Button } from "@/components/ui/button";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
+import PasswordInput from "@/components/PasswordInput";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
+import AuthLayout from "@/layouts/AuthLayout";
 import { toast } from "@/hooks/use-toast";
-import { getApiErrorMessage } from "@/lib/password-reset";
+import { applyApiErrorsToForm } from "@/lib/api-error";
 
-interface FormValues { email: string; password: string }
+const loginSchema = z.object({
+  email: z.string().trim().min(1, "Email is required").email("Enter a valid email"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type FormValues = z.infer<typeof loginSchema>;
 interface LocationState { from?: { pathname?: string } }
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>();
+  const form = useForm<FormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = form;
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const u = await login(values);
-      toast({ title: "أهلاً بعودتك!", description: u.name });
+      const user = await login({
+        email: values.email.trim().toLowerCase(),
+        password: values.password,
+      });
+      toast({ title: "Login successful", description: user.name });
       const from = (location.state as LocationState | null)?.from?.pathname || "/jobs";
       navigate(from, { replace: true });
     } catch (error) {
-      toast({
-        title: "فشل تسجيل الدخول",
-        description: getApiErrorMessage(error, "تحقق من البيانات"),
-        variant: "destructive",
-      });
+      const message = applyApiErrorsToForm(error, form, "Check your email and password.");
+      toast({ title: "Login failed", description: message, variant: "destructive" });
     }
   };
 
   return (
-    <AuthLayout title="مرحباً بعودتك" subtitle="ادخل لحسابك على سندة">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 mt-4">
+    <AuthLayout title="Welcome back" subtitle="Sign in to your Sanda account">
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-3" noValidate>
         <div>
-          <Label htmlFor="email">البريد الإلكتروني</Label>
+          <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
+            autoComplete="email"
             placeholder="you@example.com"
-            {...register("email", { required: "البريد الإلكتروني مطلوب" })}
+            aria-invalid={!!errors.email}
+            disabled={isSubmitting}
+            {...register("email")}
           />
-          {errors.email && <p className="text-destructive text-sm mt-1">{errors.email.message}</p>}
+          <Feedback className="mt-1 justify-start text-start">{errors.email?.message}</Feedback>
         </div>
+
         <div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">كلمة المرور</Label>
-            <Link to="/forgot-password" className="text-sm text-primary hover:underline">نسيت كلمة المرور؟</Link>
+            <Label htmlFor="password">Password</Label>
+            <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+              Forgot password?
+            </Link>
           </div>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
+            autoComplete="current-password"
             placeholder="••••••••"
-            {...register("password", { required: "كلمة المرور مطلوبة" })}
+            aria-invalid={!!errors.password}
+            disabled={isSubmitting}
+            {...register("password")}
           />
-          {errors.password && <p className="text-destructive text-sm mt-1">{errors.password.message}</p>}
+          <Feedback className="mt-1 justify-start text-start">{errors.password?.message}</Feedback>
         </div>
-        <Button type="submit" className="w-full mt-2" size="lg" disabled={isSubmitting}>
-          {isSubmitting ? "جاري الدخول..." : "تسجيل الدخول"}
-        </Button>
+
+        <FormSubmitButton className="mt-2 w-full" size="lg" isPending={isSubmitting} loadingText="Signing in...">
+          Sign in
+        </FormSubmitButton>
       </form>
 
-      <p className="text-center text-sm text-muted-foreground mt-4">
-        ليس لديك حساب؟{" "}
-        <Link to="/register" className="text-primary font-semibold hover:underline">أنشئ حساب جديد</Link>
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        Do not have an account?{" "}
+        <Link to="/register" className="font-semibold text-primary hover:underline">
+          Create one
+        </Link>
       </p>
     </AuthLayout>
   );

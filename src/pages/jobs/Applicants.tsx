@@ -12,6 +12,7 @@ import { useApplicants, useJob, useRejectApplicant } from "@/hooks/useJobs";
 import { useJobAssignments } from "@/hooks/useJobAssignments";
 import { useCreateConversation } from "@/hooks/useChat";
 import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 export default function Applicants() {
   const { id } = useParams<{ id: string }>();
@@ -26,11 +27,12 @@ export default function Applicants() {
   const [messagingId, setMessagingId] = useState<string | null>(null);
 
   const handleReject = async (appId: string) => {
+    if (reject.isPending) return;
     try {
       await reject.mutateAsync(appId);
       toast({ title: "Applicant rejected" });
-    } catch {
-      toast({ title: "Reject failed", variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Reject failed", description: getApiErrorMessage(error, "Could not reject applicant."), variant: "destructive" });
     }
   };
 
@@ -44,8 +46,8 @@ export default function Applicants() {
       }
       const conv = await createConversation.mutateAsync(assignment.id ?? assignment._id ?? "");
       navigate(`/chat?conversation=${conv.id ?? conv._id ?? ""}`);
-    } catch {
-      toast({ title: "Unable to open chat", variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Unable to open chat", description: getApiErrorMessage(error, "Could not open chat."), variant: "destructive" });
     } finally {
       setMessagingId(null);
     }
@@ -139,11 +141,11 @@ export default function Applicants() {
 
                   {application.status === "pending" && (
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="accent" onClick={() => setPaymentFor(application.id)}>
+                      <Button type="button" size="sm" variant="accent" onClick={() => setPaymentFor(application.id)} disabled={reject.isPending}>
                         <Check className="h-4 w-4" />
                         Accept and pay
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleReject(application.id)}>
+                      <Button type="button" size="sm" variant="outline" onClick={() => handleReject(application.id)} disabled={reject.isPending}>
                         <X className="h-4 w-4" />
                         Reject
                       </Button>
@@ -152,6 +154,7 @@ export default function Applicants() {
 
                   {application.status === "accepted" && (
                     <Button
+                      type="button"
                       size="sm"
                       variant="ghost"
                       onClick={() => handleMessage(application.worker.id)}

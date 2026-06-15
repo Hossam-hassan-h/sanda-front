@@ -1,34 +1,42 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import AuthLayout from "@/layouts/AuthLayout";
-import PasswordResetSteps from "./PasswordResetSteps";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
 import { authApi } from "@/api/auth";
-import { Button } from "@/components/ui/button";
+import Feedback from "@/components/Feedback";
+import FormSubmitButton from "@/components/FormSubmitButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import AuthLayout from "@/layouts/AuthLayout";
+import PasswordResetSteps from "./PasswordResetSteps";
 import { toast } from "@/hooks/use-toast";
+import { applyApiErrorsToForm } from "@/lib/api-error";
 import {
-  getApiErrorMessage,
   getOtpCooldownRemaining,
   markOtpSent,
   persistResetEmail,
   setResetStep,
 } from "@/lib/password-reset";
 
-interface FormValues {
-  email: string;
-}
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().min(1, "Email is required").email("Enter a valid email"),
+});
+
+type FormValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const [cooldown, setCooldown] = useState(getOtpCooldownRemaining());
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>();
+  const form = useForm<FormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: "" },
+  });
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = form;
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setCooldown(getOtpCooldownRemaining());
-    }, 1000);
+    const interval = window.setInterval(() => setCooldown(getOtpCooldownRemaining()), 1000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -36,59 +44,63 @@ export default function ForgotPassword() {
     const remaining = getOtpCooldownRemaining();
     if (remaining > 0) {
       toast({
-        title: "انتظر قليلًا",
-        description: `يرجى الانتظار ${remaining} ثانية قبل طلب رمز جديد`,
+        title: "Please wait",
+        description: `Try again in ${remaining} seconds.`,
         variant: "destructive",
       });
       setCooldown(remaining);
       return;
     }
 
+    const email = values.email.trim().toLowerCase();
     try {
-      await authApi.forgotPassword({ email: values.email });
-      persistResetEmail(values.email);
+      await authApi.forgotPassword({ email });
+      persistResetEmail(email);
       localStorage.removeItem("password_reset_otp");
       setResetStep(2);
       markOtpSent();
       setCooldown(getOtpCooldownRemaining());
-      toast({ title: "تم إرسال الرمز", description: "راجع بريدك الإلكتروني للحصول على الرمز المكون من 6 أرقام." });
+      toast({ title: "OTP sent", description: "Check your email for the 6-digit code." });
       navigate("/verify-otp");
     } catch (error) {
-      toast({
-        title: "تعذر إرسال الرمز",
-        description: getApiErrorMessage(error, "حدث خطأ في الاتصال. حاول مرة أخرى."),
-        variant: "destructive",
-      });
+      const message = applyApiErrorsToForm(error, form, "Could not send the code. Try again.");
+      toast({ title: "Could not send OTP", description: message, variant: "destructive" });
     }
   };
 
   return (
-    <AuthLayout title="نسيت كلمة المرور" subtitle="اكتب بريدك الإلكتروني لاستلام رمز آمن لإعادة التعيين.">
+    <AuthLayout title="Forgot password" subtitle="Enter your email to receive a secure reset code.">
       <PasswordResetSteps currentStep={1} />
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <div>
-          <Label htmlFor="email">البريد الإلكتروني</Label>
+          <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
             placeholder="you@example.com"
             autoComplete="email"
-            {...register("email", {
-              required: "البريد الإلكتروني مطلوب",
-              pattern: { value: /^\S+@\S+\.\S+$/, message: "اكتب بريدًا إلكترونيًا صحيحًا" },
-            })}
+            aria-invalid={!!errors.email}
+            disabled={isSubmitting || cooldown > 0}
+            {...register("email")}
           />
-          {errors.email && <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>}
+          <Feedback className="mt-1 justify-start text-start">{errors.email?.message}</Feedback>
         </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting || cooldown > 0}>
-          {cooldown > 0 ? `انتظر ${cooldown}ث` : isSubmitting ? "جاري الإرسال..." : "إرسال الرمز"}
-        </Button>
+        <FormSubmitButton
+          className="w-full"
+          isPending={isSubmitting}
+          disabled={cooldown > 0}
+          loadingText="Sending..."
+        >
+          {cooldown > 0 ? `Wait ${cooldown}s` : "Send OTP"}
+        </FormSubmitButton>
       </form>
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
-        تذكرت كلمة المرور؟{" "}
-        <Link to="/login" className="font-semibold text-primary hover:underline">العودة لتسجيل الدخول</Link>
+        Remembered your password?{" "}
+        <Link to="/login" className="font-semibold text-primary hover:underline">
+          Back to sign in
+        </Link>
       </p>
     </AuthLayout>
   );

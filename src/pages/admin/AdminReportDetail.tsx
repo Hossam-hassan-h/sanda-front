@@ -19,12 +19,14 @@ import {
 } from "@/hooks/useAdminQueries";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ErrorState } from "@/components/admin/ErrorState";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "@/hooks/use-toast";
 
 const statusLabel: Record<string, string> = {
   open: "مفتوح",
@@ -96,23 +98,39 @@ export default function AdminReportDetail() {
 
   const handleReview = async () => {
     if (!report) return;
-    await updateStatus.mutateAsync({ id: report.id, status: "reviewed" });
+    try {
+      await updateStatus.mutateAsync({ id: report.id, status: "reviewed" });
+    } catch (err) {
+      toast({ title: "خطأ في تحديث الحالة", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+    }
   };
 
   const handleClose = async () => {
     if (!report) return;
-    await updateStatus.mutateAsync({ id: report.id, status: "closed" });
+    try {
+      await updateStatus.mutateAsync({ id: report.id, status: "closed" });
+    } catch (err) {
+      toast({ title: "خطأ في إغلاق البلاغ", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+    }
   };
 
   const handleDecision = async (decision: "approved" | "rejected") => {
     if (!report) return;
-    await reviewReport.mutateAsync({ id: report.id, decision });
+    try {
+      await reviewReport.mutateAsync({ id: report.id, decision });
+    } catch (err) {
+      toast({ title: "خطأ في مراجعة البلاغ", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+    }
   };
 
   const handleDelete = async () => {
     if (!report) return;
-    await deleteReport.mutateAsync(report.id);
-    navigate("/admin/reports");
+    try {
+      await deleteReport.mutateAsync(report.id);
+      navigate("/admin/reports");
+    } catch (err) {
+      toast({ title: "خطأ في الحذف", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
+    }
   };
 
   if (isLoading) {
