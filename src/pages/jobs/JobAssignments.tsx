@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import type { JobAssignment } from "@/api/types";
 
 const statusConfig = {
+  assigned: { label: "تم التعيين", color: "bg-slate-100 text-slate-700", icon: <Clock className="w-4 h-4" /> },
   "checked-in": { label: "حاضر", color: "bg-blue-100 text-blue-700", icon: <Clock className="w-4 h-4" /> },
   "checked-out": { label: "منتهي", color: "bg-green-100 text-green-700", icon: <CheckCircle className="w-4 h-4" /> },
   "no-show": { label: "لم يحضر", color: "bg-red-100 text-red-700", icon: <XCircle className="w-4 h-4" /> },
@@ -26,7 +27,7 @@ const statusConfig = {
 function AssignmentCard({ assignment }: { assignment: JobAssignment }) {
   const checkOut = useCheckOut();
   const markNoShow = useMarkNoShow();
-  const config = statusConfig[assignment.status];
+  const config = statusConfig[assignment.status] ?? statusConfig.assigned;
 
   const handleCheckOut = async () => {
     try {
