@@ -11,6 +11,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import AdminLayout from "@/layouts/AdminLayout";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import {
   useReportQuery,
   useUpdateReportStatus,
@@ -25,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "@/hooks/use-toast";
 
 const statusLabel: Record<string, string> = {
   open: "مفتوح",
@@ -106,23 +108,61 @@ export default function AdminReportDetail() {
 
   const handleReview = async () => {
     if (!report) return;
-    await updateStatus.mutateAsync({ id: report.id, status: "reviewed" });
+    try {
+      await updateStatus.mutateAsync({ id: report.id, status: "reviewed" });
+      toast({ title: "تم تحديث البلاغ", description: "تم تعيين البلاغ كتمت المراجعة" });
+    } catch (err) {
+      toast({
+        title: "تعذر تحديث البلاغ",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
+    }
   };
 
   const handleClose = async () => {
     if (!report) return;
-    await updateStatus.mutateAsync({ id: report.id, status: "closed" });
+    try {
+      await updateStatus.mutateAsync({ id: report.id, status: "closed" });
+      toast({ title: "تم إغلاق البلاغ" });
+    } catch (err) {
+      toast({
+        title: "تعذر إغلاق البلاغ",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDecision = async (decision: "approved" | "rejected") => {
     if (!report) return;
-    await reviewReport.mutateAsync({ id: report.id, decision });
+    try {
+      await reviewReport.mutateAsync({ id: report.id, decision });
+      toast({
+        title: decision === "approved" ? "تم قبول البلاغ" : "تم رفض البلاغ",
+      });
+    } catch (err) {
+      toast({
+        title: "تعذر حفظ القرار",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = async () => {
     if (!report) return;
-    await deleteReport.mutateAsync(report.id);
-    navigate("/admin/reports");
+    try {
+      await deleteReport.mutateAsync(report.id);
+      toast({ title: "تم الحذف", description: "تم حذف البلاغ بنجاح" });
+      navigate("/admin/reports");
+    } catch (err) {
+      toast({
+        title: "خطأ في الحذف",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {

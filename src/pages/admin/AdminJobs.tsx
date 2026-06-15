@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, Pencil, Trash2, User, Star, MapPin } from "lucide-react";
 import AdminLayout from "@/layouts/AdminLayout";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import { AdminDataTable } from "@/components/admin/AdminDataTable";
 import type { Column } from "@/components/admin/AdminDataTable";
 import { Pagination } from "@/components/admin/Pagination";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useJobsQuery, useUpdateJob, useDeleteJob } from "@/hooks/useAdminQueries";
 import type { Job, JobStatus } from "@/api/types";
+import { toast } from "@/hooks/use-toast";
 
 const CATEGORIES = [
   "ضيافة وفعاليات",
@@ -99,17 +101,31 @@ export default function AdminJobs() {
 
   const handleEditSave = async (formData: Partial<Job>) => {
     if (!editJobId) return;
-    await updateJob.mutateAsync({ id: editJobId, payload: formData });
-    setEditJobId(null);
+    try {
+      await updateJob.mutateAsync({ id: editJobId, payload: formData });
+      toast({ title: "تم الحفظ", description: "تم تحديث بيانات الوظيفة بنجاح" });
+      setEditJobId(null);
+    } catch (err) {
+      toast({
+        title: "خطأ في الحفظ",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = useCallback(async () => {
     if (!deleteJobId) return;
     try {
       await deleteJob.mutateAsync(deleteJobId);
+      toast({ title: "تم الحذف", description: "تم حذف الوظيفة بنجاح" });
       setDeleteJobId(null);
-    } catch {
-      // error handled by useDeleteJob onError
+    } catch (err) {
+      toast({
+        title: "خطأ في الحذف",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
     }
   }, [deleteJobId, deleteJob]);
 

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/password-reset";
 
 interface QRScannerProps {
   onScanComplete?: (success: boolean) => void;
@@ -46,7 +47,7 @@ export default function QRScanner({ onScanComplete }: QRScannerProps) {
       setResult("success");
     } catch (err) {
       setResult("error");
-      toast({ title: "خطأ", description: err instanceof Error ? err.message : "فشل في تسجيل QR", variant: "destructive" });
+      toast({ title: "خطأ", description: getApiErrorMessage(err, "فشل في تسجيل QR"), variant: "destructive" });
     } finally {
       setShowResult(true);
       stopCamera();

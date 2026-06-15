@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Loader2, MessageCircle, Send } from "lucide-react";
 import UserLayout from "@/layouts/UserLayout";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useSocketConnect } from "@/hooks/useSocket";
 import type { Conversation, Message, UserSummary } from "@/api/types";
+import { toast } from "@/hooks/use-toast";
 
 const getId = (item: { id?: string; _id?: string } | string | null | undefined) =>
   typeof item === "string" ? item : item?.id ?? item?._id ?? "";
@@ -78,8 +80,17 @@ export default function Chat() {
 
   const handleSend = async () => {
     if (!activeId || !text.trim() || cancelled) return;
-    await send.mutateAsync({ conversationId: activeId, content: text.trim() });
-    setText("");
+    const content = text.trim();
+    try {
+      await send.mutateAsync({ conversationId: activeId, content });
+      setText("");
+    } catch (err) {
+      toast({
+        title: "تعذر إرسال الرسالة",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
+    }
   };
 
   return (

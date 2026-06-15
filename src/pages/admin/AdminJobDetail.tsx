@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import AdminLayout from "@/layouts/AdminLayout";
 import { useJobQuery, useDeleteJob, useUpdateJob, useUserQuery } from "@/hooks/useAdminQueries";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import type { Job } from "@/api/types";
 import JobEditModal from "@/components/admin/JobEditModal";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
@@ -178,18 +179,31 @@ export default function AdminJobDetail() {
   const handleDelete = async () => {
     try {
       await deleteJob.mutateAsync(id!);
+      toast({ title: "تم الحذف", description: "تم حذف الوظيفة بنجاح" });
       setDeleteOpen(false);
       navigate("/admin/jobs");
-    } catch {
-      toast({ title: "خطأ في الحذف", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: "خطأ في الحذف",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
     }
   };
 
   const handleEditSave = async (formData: Partial<Job>) => {
     if (!id) return;
-    await updateJob.mutateAsync({ id, payload: formData });
-    toast({ title: "تم الحفظ", description: "تم تحديث بيانات الوظيفة" });
-    setEditOpen(false);
+    try {
+      await updateJob.mutateAsync({ id, payload: formData });
+      toast({ title: "تم الحفظ", description: "تم تحديث بيانات الوظيفة بنجاح" });
+      setEditOpen(false);
+    } catch (err) {
+      toast({
+        title: "خطأ في الحفظ",
+        description: getApiErrorMessage(err, "حاول مرة أخرى"),
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {

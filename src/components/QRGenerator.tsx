@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
+import { getApiErrorMessage } from "@/lib/password-reset";
 import ReportForm from "@/components/ReportForm";
 
 interface QRGeneratorProps {
@@ -25,6 +26,7 @@ export default function QRGenerator({ assignmentId, assignmentStatus, marketplac
   const isPending = generateCheckInQR.isPending || generateCheckOutQR.isPending || refundAssignment.isPending;
 
   const handleGenerate = async (type: "check_in" | "check_out") => {
+    if (isPending) return;
     try {
       const fn = type === "check_in" ? generateCheckInQR : generateCheckOutQR;
       const result = await fn.mutateAsync(assignmentId);
@@ -32,7 +34,7 @@ export default function QRGenerator({ assignmentId, assignmentStatus, marketplac
       const qrPayload = JSON.stringify({ assignmentId, qrToken: result.qrToken, type });
       setQrImage(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}`);
     } catch (err) {
-      toast({ title: "فشل إنشاء QR", description: err instanceof Error ? err.message : "حاول مرة أخرى", variant: "destructive" });
+      toast({ title: "فشل إنشاء QR", description: getApiErrorMessage(err, "حاول مرة أخرى"), variant: "destructive" });
     }
   };
 
@@ -85,8 +87,8 @@ export default function QRGenerator({ assignmentId, assignmentStatus, marketplac
               <Button size="sm" variant="outline" onClick={handleDownload}>
                 <Download className="w-4 h-4" />
               </Button>
-              <Button size="sm" variant="outline" onClick={() => handleGenerate(qrType)}>
-                <RefreshCw className="w-4 h-4" />
+              <Button size="sm" variant="outline" onClick={() => handleGenerate(qrType)} disabled={isPending}>
+                {isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               </Button>
             </div>
           </div>

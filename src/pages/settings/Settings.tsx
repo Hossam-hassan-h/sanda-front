@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Languages, Key } from "lucide-react";
+import { authApi } from "@/api/auth";
+import { getApiErrorMessage } from "@/lib/password-reset";
+import { Languages, Key, Loader2 } from "lucide-react";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -14,8 +16,9 @@ export default function Settings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [lang, setLang] = useState("ar");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       toast({
@@ -25,13 +28,26 @@ export default function Settings() {
       });
       return;
     }
-    toast({
-      title: "تم تحديث كلمة المرور",
-      description: "تم تغيير كلمة مرور حسابك بنجاح.",
-    });
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    if (!user?.id) return;
+    setSubmitting(true);
+    try {
+      await authApi.updatePassword(user.id, { currentPassword, newPassword });
+      toast({
+        title: "تم تحديث كلمة المرور",
+        description: "تم تغيير كلمة مرور حسابك بنجاح.",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      toast({
+        title: "خطأ",
+        description: getApiErrorMessage(err, "فشل تغيير كلمة المرور. تحقق من كلمة المرور الحالية"),
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -110,8 +126,8 @@ export default function Settings() {
                     required
                   />
                 </div>
-                <Button type="submit" size="sm" className="w-full mt-2">
-                  تحديث كلمة المرور
+                <Button type="submit" size="sm" className="w-full mt-2" disabled={submitting}>
+                  {submitting ? <Loader2 className="w-4 h-4 ms-2 animate-spin" /> : "تحديث كلمة المرور"}
                 </Button>
               </form>
             </CardContent>

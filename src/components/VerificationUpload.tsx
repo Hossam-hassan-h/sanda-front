@@ -137,8 +137,8 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
     const oversizedFile = selectedFiles.find((file) => file.size > MAX_FILE_SIZE);
     if (oversizedFile) {
       toast({
-        title: "Ø§Ù„Ù…Ù„Ù ÙƒØ¨ÙŠØ± Ø¬Ø¯Ù‹Ø§",
-        description: "Ø§Ù„Ø­Ø¯ Ø§Ù„Ø£Ù‚ØµÙ‰ Ù„ÙƒÙ„ ØµÙˆØ±Ø© Ù‡Ùˆ 5MB.",
+        title: "الملف كبير جداً",
+        description: "الحد الأقصى لكل صورة هو 5MB.",
         variant: "destructive",
       });
       return;
