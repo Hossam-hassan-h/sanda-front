@@ -27,8 +27,11 @@ const statusConfig = {
 function AssignmentCard({ assignment }: { assignment: JobAssignment }) {
   const checkOut = useCheckOut();
   const markNoShow = useMarkNoShow();
-  const config = statusConfig[assignment.status] ?? statusConfig.assigned;
-
+const config = statusConfig[assignment.status] ?? {
+  label: "غير معروف",
+  color: "bg-gray-100 text-gray-700",
+  icon: <AlertTriangle className="w-4 h-4" />,
+};
   const handleCheckOut = async () => {
     try {
       await checkOut.mutateAsync(assignment.id);
