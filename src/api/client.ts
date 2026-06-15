@@ -1,7 +1,13 @@
 import axios from "axios";
 
+export const API_ORIGIN =
+  import.meta.env.VITE_API_URL || "https://backend-clone-sanda-production.up.railway.app";
+
+export const API_BASE_URL = `${API_ORIGIN.replace(/\/api\/?$/, "").replace(/\/$/, "")}/api`;
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL: API_BASE_URL,
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {

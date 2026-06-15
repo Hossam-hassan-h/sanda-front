@@ -61,7 +61,7 @@ export const paymentService = {
 
   async createPaymentSession(details: PaymentDetails): Promise<{ sessionUrl: string; paymentId: string }> {
     if (!USE_MOCKS) {
-      try { const { data } = await api.post("/payments/create-session", details); return data; } catch { /* fallback */ }
+      throw new Error("Direct payment sessions are not supported by the production backend. Use application payment intents.");
     }
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -75,7 +75,12 @@ export const paymentService = {
 
   async verifyPayment(paymentId: string): Promise<{ success: boolean; transactionId: string }> {
     if (!USE_MOCKS) {
-      try { const { data } = await api.get(`/payments/verify/${paymentId}`); return data; } catch { /* fallback */ }
+      const { data } = await api.get(`/payments/${paymentId}`);
+      const payment = data as { status?: string; transactionId?: string; id?: string };
+      return {
+        success: payment.status === "FUNDS_HELD" || payment.status === "RELEASED" || payment.status === "COMPLETED",
+        transactionId: payment.transactionId || payment.id || paymentId,
+      };
     }
     return new Promise((resolve) => {
       setTimeout(() => {
