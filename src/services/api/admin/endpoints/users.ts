@@ -12,8 +12,8 @@ function filterMockUsers(params?: AdminUsersParams): User[] {
     result = result.filter((u) => u.name.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q));
   }
   if (params?.role) result = result.filter((u) => u.role === params.role);
-  if (params?.status === "active") result = result.filter((u) => u.isActive !== false);
-  if (params?.status === "banned") result = result.filter((u) => u.isActive === false);
+  if (params?.status === "active") result = result.filter((u) => u.isBlocked !== true);
+  if (params?.status === "banned") result = result.filter((u) => u.isBlocked === true);
   return result;
 }
 

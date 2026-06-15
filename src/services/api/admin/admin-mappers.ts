@@ -17,6 +17,7 @@ export function mapBackendUser(raw: Record<string, unknown>): User {
     role: (raw.role as User["role"]) ?? "worker",
     avatar: profileImage?.url as string | undefined,
     isActive: (raw.isActive as boolean) ?? true,
+    isBlocked: (raw.isBlocked as boolean) ?? false,
     isVerified: (raw.isVerified as boolean) ?? false,
     is_verified: (raw.isVerified as boolean) ?? false,
     verification_status: (rawVerificationStatus as User["verification_status"]) ?? "none",

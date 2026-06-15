@@ -321,7 +321,7 @@ export default function AdminUserDetail() {
   const isWorkerModerationPending =
     suspendWorker.isPending || blockWorker.isPending || restoreWorker.isPending;
 
-  const statusBadge = user.isActive === false ? (
+  const statusBadge = user.isBlocked === true ? (
     <Badge variant="destructive">محظور</Badge>
   ) : user.isVerified ? (
     <Badge variant="default" className="bg-green-600/10 text-green-600 border-green-600/20 gap-1">

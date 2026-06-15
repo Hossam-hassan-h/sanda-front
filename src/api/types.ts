@@ -84,6 +84,7 @@ export interface User {
   confirmedMail?: boolean;
   isVerified: boolean;
   isActive?: boolean;     // maps to ERD is_active
+  isBlocked?: boolean;
   rating?: number;
   ratingsCount?: number;
   skills?: string[];

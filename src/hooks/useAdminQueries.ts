@@ -69,7 +69,7 @@ export const useBanUser = () => {
       qc.setQueriesData({ queryKey: ["admin", "users"] }, (old: unknown) => {
         if (!old || typeof old !== "object" || !("data" in old) || !Array.isArray((old as Record<string, unknown>).data)) return old;
         const paginated = old as { data: User[] };
-        return { ...paginated, data: paginated.data.map((u) => u.id === id ? { ...u, isActive: false } : u) };
+        return { ...paginated, data: paginated.data.map((u) => u.id === id ? { ...u, isBlocked: true } : u) };
       });
     },
   });
@@ -83,7 +83,7 @@ export const useUnbanUser = () => {
       qc.setQueriesData({ queryKey: ["admin", "users"] }, (old: unknown) => {
         if (!old || typeof old !== "object" || !("data" in old) || !Array.isArray((old as Record<string, unknown>).data)) return old;
         const paginated = old as { data: User[] };
-        return { ...paginated, data: paginated.data.map((u) => u.id === id ? { ...u, isActive: true } : u) };
+        return { ...paginated, data: paginated.data.map((u) => u.id === id ? { ...u, isBlocked: false } : u) };
       });
     },
   });

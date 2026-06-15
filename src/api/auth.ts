@@ -29,6 +29,7 @@ const mapUser = (raw: Record<string, unknown>): User => {
     isVerified: (user.isVerified as boolean) ?? false,
     confirmedMail: user.confirmedMail as boolean | undefined,
     isActive: (user.isActive as boolean) ?? true,
+    isBlocked: (user.isBlocked as boolean) ?? false,
     rating: user.rating as number | undefined,
     ratingsCount: user.ratingsCount as number | undefined,
     bio: user.bio as string | undefined,

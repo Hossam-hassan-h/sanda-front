@@ -78,7 +78,7 @@ function formatDate(dateStr: string) {
 }
 
 function StatusBadge({ user }: { user: User }) {
-  if (user.isActive === false) {
+  if (user.isBlocked === true) {
     return <Badge variant="destructive">محظور</Badge>;
   }
   if (user.isVerified) {
@@ -176,7 +176,7 @@ export default function AdminUsers() {
     const target = users.find((u) => u.id === banUserId);
     if (!target) return;
     try {
-      if (target.isActive === false) {
+      if (target.isBlocked === true) {
         await unbanUser.mutateAsync(banUserId);
         toast({ title: "تم فك الحظر" });
       } else {
@@ -447,9 +447,9 @@ export default function AdminUsers() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => setBanUserId(u.id)}
-                              className={u.isActive === false ? "" : "text-destructive focus:text-destructive"}
+                              className={u.isBlocked === true ? "" : "text-destructive focus:text-destructive"}
                             >
-                              {u.isActive === false ? (
+                              {u.isBlocked === true ? (
                                 <><UserCheck className="h-4 w-4 ml-2" />إلغاء الحظر</>
                               ) : (
                                 <><Ban className="h-4 w-4 ml-2" />حظر المستخدم</>
@@ -526,9 +526,9 @@ export default function AdminUsers() {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => setBanUserId(u.id)}
-                        className={u.isActive === false ? "" : "text-destructive focus:text-destructive"}
+                        className={u.isBlocked === true ? "" : "text-destructive focus:text-destructive"}
                       >
-                        {u.isActive === false ? (
+                        {u.isBlocked === true ? (
                           <><UserCheck className="h-4 w-4 ml-2" />إلغاء الحظر</>
                         ) : (
                           <><Ban className="h-4 w-4 ml-2" />حظر المستخدم</>
@@ -575,15 +575,15 @@ export default function AdminUsers() {
         onOpenChange={(open) => {
           if (!open) setBanUserId(null);
         }}
-        title={banTarget?.isActive === false ? "إلغاء حظر المستخدم" : "حظر المستخدم"}
+        title={banTarget?.isBlocked === true ? "إلغاء حظر المستخدم" : "حظر المستخدم"}
         description={
-          banTarget?.isActive === false
+          banTarget?.isBlocked === true
             ? `هل أنت متأكد من إلغاء حظر "${banTarget?.name}"؟`
             : `هل أنت متأكد من حظر "${banTarget?.name}"؟ لن يتمكن من تسجيل الدخول أو استخدام المنصة.`
         }
-        confirmText={banTarget?.isActive === false ? "إلغاء الحظر" : "حظر"}
+        confirmText={banTarget?.isBlocked === true ? "إلغاء الحظر" : "حظر"}
         cancelText="إلغاء"
-        variant={banTarget?.isActive === false ? "default" : "destructive"}
+        variant={banTarget?.isBlocked === true ? "default" : "destructive"}
         loading={banUser.isPending || unbanUser.isPending}
         onConfirm={handleToggleBan}
       />
