@@ -32,10 +32,11 @@ export const reportsApi = {
   async create(payload: CreateReportPayload): Promise<Report> {
     if (!USE_MOCKS) {
       try {
-        const endpoint = payload.assignmentId
-          ? `/job-assignments/${payload.assignmentId}/absence-report`
-          : "/reports";
-        const { data } = await api.post<Report>(endpoint, payload);
+        const { data } = await api.post<Report>("/reports", {
+          reported_user: payload.reportedUserId,
+          reason: payload.reason,
+          job: payload.jobId,
+        });
         return data;
       } catch { /* fallback */ }
     }

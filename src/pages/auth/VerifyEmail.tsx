@@ -17,6 +17,7 @@ export default function VerifyEmail() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   if (!email) {
     return <Navigate to="/register" replace />;
@@ -46,6 +47,22 @@ export default function VerifyEmail() {
     }
   };
 
+  const handleResend = async () => {
+    setError("");
+    setIsResending(true);
+    try {
+      await authApi.resendEmailOtp({ email });
+      setOtp("");
+      toast({ title: "تم إرسال رمز جديد", description: "استخدم آخر رمز وصل إلى بريدك الإلكتروني." });
+    } catch (error) {
+      const message = getApiErrorMessage(error, "تعذر إرسال رمز جديد. حاول مرة أخرى.");
+      setError(message);
+      toast({ title: "تعذر إعادة الإرسال", description: message, variant: "destructive" });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <AuthLayout title="تأكيد البريد الإلكتروني" subtitle={`أرسلنا رمز تحقق مكون من 6 أرقام إلى ${email}.`}>
       <div className="space-y-5">
@@ -72,6 +89,9 @@ export default function VerifyEmail() {
 
         <Button type="button" className="w-full" onClick={handleVerify} disabled={otp.length !== 6 || isSubmitting}>
           {isSubmitting ? "جاري التأكيد..." : "تأكيد البريد الإلكتروني"}
+        </Button>
+        <Button type="button" variant="outline" className="w-full" onClick={handleResend} disabled={isSubmitting || isResending}>
+          {isResending ? "جاري الإرسال..." : "إعادة إرسال الرمز"}
         </Button>
       </div>
     </AuthLayout>

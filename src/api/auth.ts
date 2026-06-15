@@ -7,6 +7,7 @@ export interface LoginPayload { email: string; password: string; role?: UserRole
 export interface RegisterPayload { name: string; email: string; phone?: string; password: string; role: UserRole }
 export interface RegisterResponse { message: string; userId: string; email: string }
 export interface VerifyEmailPayload { email: string; otp: string }
+export interface ResendEmailOtpPayload { email: string }
 export interface ForgotPasswordPayload { email: string }
 export interface ResetPasswordPayload { email: string; otp: string; newPassword: string }
 
@@ -78,6 +79,11 @@ export const authApi = {
     const token = raw.accessToken as string;
     localStorage.setItem("sanda_token", token);
     return { user: mapUser(raw.user as Record<string, unknown>), token };
+  },
+
+  async resendEmailOtp(payload: ResendEmailOtpPayload): Promise<void> {
+    if (USE_MOCKS) return mockDelay(undefined);
+    await api.post("/auth/resend-email-otp", payload);
   },
 
   async me(): Promise<User> {

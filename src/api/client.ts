@@ -3,11 +3,13 @@ import axios from "axios";
 export const API_ORIGIN =
   import.meta.env.VITE_API_URL || "https://backend-clone-sanda-production.up.railway.app";
 
-export const API_BASE_URL = `${API_ORIGIN.replace(/\/api\/?$/, "").replace(/\/$/, "")}/api`;
+export const API_ROOT_URL = API_ORIGIN.replace(/\/api\/?$/, "").replace(/\/$/, "");
+export const API_BASE_URL = `${API_ROOT_URL}/api`;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
+  timeout: Number(import.meta.env.VITE_API_TIMEOUT_MS || 20000),
 });
 
 api.interceptors.request.use((config) => {

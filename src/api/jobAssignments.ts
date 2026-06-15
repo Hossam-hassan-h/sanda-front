@@ -13,21 +13,28 @@ const mapAssignment = (raw: Record<string, unknown>): JobAssignment => {
     cancelled: "no-show",
     no_show: "no-show",
   };
+  const checkedInAt = (raw.checked_in_at as string) ?? (raw.checkedInAt as string) ?? null;
+  const checkedOutAt = (raw.checked_out_at as string) ?? (raw.checkedOutAt as string) ?? null;
+  const mappedStatus = statusMap[raw.status as string] ?? (raw.status as JobAssignment["status"]);
   return {
     id: raw.id as string ?? raw._id as string,
     jobId: job?._id as string ?? job?.id as string ?? (raw.jobId as string) ?? "",
     job: job ? { id: job._id as string ?? job.id as string, title: job.title as string, city: (job.location as string) ?? (job.city as string) ?? "", price: (job.salary as number) ?? (job.price as number) ?? 0, status: job.status as string } : (raw.job as unknown as JobAssignment["job"]),
     workerId: typeof worker === "string" ? worker : (worker?._id as string ?? worker?.id as string ?? (raw.workerId as string) ?? ""),
     worker: worker ? (typeof worker === "object" ? { id: worker._id as string ?? worker.id as string, name: worker.name as string, avatar: worker.avatar as string ?? ((worker.profileImage as Record<string, unknown>)?.url as string) ?? (worker.profile_image as Record<string, unknown>)?.url as string, rating: worker.rating as number } : undefined) : (raw.worker as UserSummary),
-    checkInTime: (raw.checked_in_at as string) ?? (raw.checkedInAt as string) ?? (raw.startedAt as string) ?? raw.checkInTime as string,
-    checkOutTime: (raw.checked_out_at as string) ?? (raw.checkedOutAt as string) ?? (raw.completedAt as string) ?? raw.checkOutTime as string,
-    checkedInAt: (raw.checked_in_at as string) ?? (raw.checkedInAt as string) ?? null,
-    checkedOutAt: (raw.checked_out_at as string) ?? (raw.checkedOutAt as string) ?? null,
+    checkInTime: checkedInAt ?? (raw.startedAt as string) ?? raw.checkInTime as string,
+    checkOutTime: checkedOutAt ?? (raw.completedAt as string) ?? raw.checkOutTime as string,
+    checkedInAt,
+    checkedOutAt,
     completedAt: (raw.completed_at as string) ?? (raw.completedAt as string) ?? null,
     refundDeadline: (raw.refund_deadline as string) ?? (raw.refundDeadline as string) ?? null,
     marketplaceStatus: (raw.marketplace_status as JobAssignment["marketplaceStatus"]) ?? (raw.marketplaceStatus as JobAssignment["marketplaceStatus"]),
     payment: typeof raw.payment === "string" ? raw.payment : ((raw.payment as Record<string, unknown> | undefined)?._id as string) ?? ((raw.payment as Record<string, unknown> | undefined)?.id as string) ?? null,
-    status: statusMap[raw.status as string] ?? (raw.status as JobAssignment["status"]),
+    status: checkedOutAt ? "checked-out" : checkedInAt ? "checked-in" : mappedStatus,
+    workedHours: (raw.workedHours as number) ?? null,
+    attendanceStatus: (raw.attendanceStatus as JobAssignment["attendanceStatus"]) ?? (checkedOutAt ? "checked_out" : checkedInAt ? "checked_in" : "none"),
+    checkInLocation: (raw.checkInLocation as JobAssignment["checkInLocation"]) ?? (raw.check_in_location as JobAssignment["checkInLocation"]) ?? null,
+    checkOutLocation: (raw.checkOutLocation as JobAssignment["checkOutLocation"]) ?? (raw.check_out_location as JobAssignment["checkOutLocation"]) ?? null,
     createdAt: raw.createdAt as string ?? raw.created_at as string,
   };
 };
