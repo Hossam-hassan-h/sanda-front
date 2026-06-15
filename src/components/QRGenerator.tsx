@@ -124,7 +124,7 @@ export default function QRGenerator({ assignmentId, assignmentStatus, marketplac
                 } catch (err) {
                   toast({
                     title: "Refund failed",
-                    description: err instanceof Error ? err.message : "Please try again.",
+                    description: getApiErrorMessage(err, "Please try again."),
                     variant: "destructive",
                   });
                 }

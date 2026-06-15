@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
+import PasswordInput from "@/components/PasswordInput";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/password-reset";
@@ -71,12 +72,12 @@ export default function Register() {
         </div>
         <div>
           <Label htmlFor="password">كلمة المرور</Label>
-          <Input id="password" type="password" placeholder="٨ أحرف على الأقل" {...register("password", { required: "كلمة المرور مطلوبة", minLength: { value: 8, message: "كلمة المرور لازم تكون ٨ أحرف" } })} />
+          <PasswordInput id="password" autoComplete="new-password" placeholder="٨ أحرف على الأقل" {...register("password", { required: "كلمة المرور مطلوبة", minLength: { value: 8, message: "كلمة المرور لازم تكون ٨ أحرف" } })} />
           {errors.password && <p className="text-destructive text-sm mt-1">{errors.password.message}</p>}
         </div>
         <div>
           <Label htmlFor="confirmPassword">تأكيد كلمة المرور</Label>
-          <Input id="confirmPassword" type="password" {...register("confirmPassword", { required: "أعد كتابة كلمة المرور", validate: (v) => v === password || "كلمات المرور غير متطابقة" })} />
+          <PasswordInput id="confirmPassword" autoComplete="new-password" {...register("confirmPassword", { required: "أعد كتابة كلمة المرور", validate: (v) => v === password || "كلمات المرور غير متطابقة" })} />
           {errors.confirmPassword && <p className="text-destructive text-sm mt-1">{errors.confirmPassword.message}</p>}
         </div>
 

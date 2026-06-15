@@ -4,6 +4,7 @@ import AuthLayout from "@/layouts/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PasswordInput from "@/components/PasswordInput";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { getApiErrorMessage } from "@/lib/password-reset";
@@ -50,9 +51,8 @@ export default function Login() {
             <Label htmlFor="password">كلمة المرور</Label>
             <Link to="/forgot-password" className="text-sm text-primary hover:underline">نسيت كلمة المرور؟</Link>
           </div>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="••••••••"
             {...register("password", { required: "كلمة المرور مطلوبة" })}
           />

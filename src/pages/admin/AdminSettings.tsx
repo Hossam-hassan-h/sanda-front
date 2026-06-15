@@ -2,7 +2,7 @@ import { useState } from "react";
 import AdminLayout from "@/layouts/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import PasswordInput from "@/components/PasswordInput";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { authApi } from "@/api/auth";
@@ -60,15 +60,15 @@ export default function AdminSettings() {
             <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
               <div>
                 <label className="block text-sm font-medium mb-1">كلمة المرور الحالية</label>
-                <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required placeholder="••••••••" />
+                <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required placeholder="••••••••" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">كلمة المرور الجديدة</label>
-                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required placeholder="٨ أحرف على الأقل" />
+                <PasswordInput autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required placeholder="٨ أحرف على الأقل" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">تأكيد كلمة المرور الجديدة</label>
-                <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required placeholder="أعد كتابة كلمة المرور" />
+                <PasswordInput autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required placeholder="أعد كتابة كلمة المرور" />
               </div>
               <Button type="submit" disabled={saving}>
                 {saving ? "جاري الحفظ..." : "حفظ التغييرات"}

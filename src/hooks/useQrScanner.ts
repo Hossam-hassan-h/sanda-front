@@ -74,10 +74,12 @@ export function useQrScanner(options: UseQrScannerOptions = {}): UseQrScannerRet
       try {
         await scannerRef.current.stop();
       } catch {
+        // Scanner may already be stopped by the browser or html5-qrcode internals.
       }
       try {
         await scannerRef.current.clear();
       } catch {
+        // Clearing is best-effort during teardown.
       }
       scannerRef.current = null;
     }
@@ -127,10 +129,12 @@ export function useQrScanner(options: UseQrScannerOptions = {}): UseQrScannerRet
           try {
             await scanner.pause(true);
           } catch {
+            // Some scanner states cannot be paused; the scan result is still valid.
           }
           onSuccess?.(decodedText);
         },
         () => {
+          // Frame-level decode failures are expected while scanning.
         }
       );
 
@@ -185,6 +189,7 @@ export function useQrScanner(options: UseQrScannerOptions = {}): UseQrScannerRet
       }
       setIsTorchOn(newState);
     } catch {
+      // Torch is optional and not consistently exposed by browsers.
     }
   }, [isTorchOn, torchSupported]);
 
@@ -192,8 +197,8 @@ export function useQrScanner(options: UseQrScannerOptions = {}): UseQrScannerRet
     return () => {
       lockedRef.current = false;
       if (scannerRef.current) {
-        try { scannerRef.current.stop().catch(() => {}); } catch {}
-        try { scannerRef.current.clear().catch(() => {}); } catch {}
+        try { scannerRef.current.stop().catch(() => undefined); } catch { /* best-effort teardown */ }
+        try { scannerRef.current.clear().catch(() => undefined); } catch { /* best-effort teardown */ }
         scannerRef.current = null;
       }
     };

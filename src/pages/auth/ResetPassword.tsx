@@ -6,6 +6,7 @@ import { authApi } from "@/api/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PasswordInput from "@/components/PasswordInput";
 import { toast } from "@/hooks/use-toast";
 import {
   clearResetFlow,
@@ -61,9 +62,8 @@ export default function ResetPassword() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
-          <Input
+          <PasswordInput
             id="newPassword"
-            type="password"
             autoComplete="new-password"
             placeholder="٨ أحرف على الأقل"
             {...register("newPassword", {
@@ -76,9 +76,8 @@ export default function ResetPassword() {
 
         <div>
           <Label htmlFor="confirmPassword">تأكيد كلمة المرور</Label>
-          <Input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             autoComplete="new-password"
             placeholder="أعد كتابة كلمة المرور"
             {...register("confirmPassword", {
