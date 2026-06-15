@@ -25,6 +25,7 @@ const MyJobs = lazy(() => import("./pages/jobs/MyJobs"));
 const Applicants = lazy(() => import("./pages/jobs/Applicants"));
 const ActiveJob = lazy(() => import("./pages/jobs/ActiveJob"));
 const JobAssignments = lazy(() => import("./pages/jobs/JobAssignments"));
+const EmployerAttendance = lazy(() => import("./pages/jobs/EmployerAttendance"));
 const WorkerJobs = lazy(() => import("./pages/worker/WorkerJobs"));
 const RateWorker = lazy(() => import("./pages/jobs/RateWorker"));
 const RateEmployer = lazy(() => import("./pages/jobs/RateEmployer"));
@@ -49,6 +50,7 @@ const AdminWallet = lazy(() => import("./pages/admin/AdminWallet"));
 const AdminChatMonitor = lazy(() => import("./pages/admin/AdminChatMonitor"));
 const AdminUserLogs = lazy(() => import("./pages/admin/AdminUserLogs"));
 const AdminUserDetail = lazy(() => import("./pages/admin/AdminUserDetail"));
+const AdminAttendance = lazy(() => import("./pages/admin/AdminAttendance"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -127,6 +129,8 @@ const App = () => (
             <Route path="/jobs/:id/rate-employer" element={<ProtectedRoute roles={["worker"]}><RateEmployer /></ProtectedRoute>} />
             <Route path="/my-jobs" element={<ProtectedRoute roles={["employer"]}><MyJobs /></ProtectedRoute>} />
             <Route path="/my-jobs-active" element={<ProtectedRoute roles={["worker"]}><WorkerJobs /></ProtectedRoute>} />
+            <Route path="/jobs/:id/attendance" element={<ProtectedRoute roles={["employer"]}><EmployerAttendance /></ProtectedRoute>} />
+            <Route path="/attendance/reports" element={<ProtectedRoute roles={["employer"]}><EmployerAttendance /></ProtectedRoute>} />
 
             <Route path="/wallet" element={<ProtectedRoute roles={["worker", "employer"]}><Wallet /></ProtectedRoute>} />
             <Route path="/chat" element={<ProtectedRoute roles={["worker", "employer"]}><Chat /></ProtectedRoute>} />
@@ -148,6 +152,7 @@ const App = () => (
             <Route path="/admin/wallet" element={<ProtectedRoute roles={["admin"]}><AdminWallet /></ProtectedRoute>} />
             <Route path="/admin/chat-monitor" element={<ProtectedRoute roles={["admin"]}><AdminChatMonitor /></ProtectedRoute>} />
             <Route path="/admin/user-logs" element={<ProtectedRoute roles={["admin"]}><AdminUserLogs /></ProtectedRoute>} />
+            <Route path="/admin/attendance" element={<ProtectedRoute roles={["admin"]}><AdminAttendance /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

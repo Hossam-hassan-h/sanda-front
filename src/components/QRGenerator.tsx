@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { RefreshCw, CheckCircle, Download, AlertTriangle, Clock, LogOut } from "lucide-react";
+import { RefreshCw, CheckCircle, Download, Clock, LogOut } from "lucide-react";
 import { useGenerateCheckInQR, useGenerateCheckOutQR, useRefundAssignment } from "@/hooks/useJobAssignments";
+import { generateQRDataUrl, downloadQRImage } from "@/utils/qrGenerator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,33 +18,34 @@ interface QRGeneratorProps {
 }
 
 export default function QRGenerator({ assignmentId, assignmentStatus, marketplaceStatus, refundDeadline, workerId, workerName }: QRGeneratorProps) {
-  const [qrImage, setQrImage] = useState<string>("");
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [qrType, setQrType] = useState<"check_in" | "check_out">("check_in");
+  const [generating, setGenerating] = useState(false);
   const generateCheckInQR = useGenerateCheckInQR();
   const generateCheckOutQR = useGenerateCheckOutQR();
   const refundAssignment = useRefundAssignment();
-  const isPending = generateCheckInQR.isPending || generateCheckOutQR.isPending || refundAssignment.isPending;
+  const isPending = generateCheckInQR.isPending || generateCheckOutQR.isPending || refundAssignment.isPending || generating;
 
   const handleGenerate = async (type: "check_in" | "check_out") => {
     try {
+      setGenerating(true);
       const fn = type === "check_in" ? generateCheckInQR : generateCheckOutQR;
       const result = await fn.mutateAsync(assignmentId);
       setQrType(type);
       const qrPayload = JSON.stringify({ assignmentId, qrToken: result.qrToken, type });
-      setQrImage(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}`);
+      const dataUrl = await generateQRDataUrl(qrPayload, 300);
+      setQrDataUrl(dataUrl);
     } catch (err) {
       toast({ title: "فشل إنشاء QR", description: err instanceof Error ? err.message : "حاول مرة أخرى", variant: "destructive" });
+    } finally {
+      setGenerating(false);
     }
   };
 
   const handleDownload = () => {
-    if (!qrImage) return;
-    const link = document.createElement("a");
-    link.href = qrImage;
-    link.download = `sanda-qr-${assignmentId}-${qrType}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!qrDataUrl) return;
+    const filename = `sanda-qr-${assignmentId}-${qrType}.png`;
+    downloadQRImage(qrDataUrl, filename);
   };
 
   const hasCheckedIn = assignmentStatus === "checked-in" || assignmentStatus === "checked-out";
@@ -69,15 +71,15 @@ export default function QRGenerator({ assignmentId, assignmentStatus, marketplac
           <div className="text-sm font-medium">{workerName && `${workerName} — `}توليد QR</div>
         </div>
 
-        {qrImage ? (
+        {qrDataUrl ? (
           <div className="space-y-3">
             <div className="relative inline-block mx-auto">
               <img
-                src={qrImage}
+                src={qrDataUrl}
                 alt="QR Code"
                 className="w-36 h-36 rounded-xl border-2 border-primary/20"
               />
-              <Badge className={`absolute -top-2 -right-2 ${qrType === "check_in" ? "bg-blue-500" : "bg-amber-500"} text-white`}>
+              <Badge className={`absolute -top-2 start-0 ${qrType === "check_in" ? "bg-blue-500" : "bg-amber-500"} text-white`}>
                 {qrType === "check_in" ? "حضور" : "انصراف"}
               </Badge>
             </div>

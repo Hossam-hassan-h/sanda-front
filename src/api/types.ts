@@ -176,6 +176,10 @@ export interface JobAssignment {
   marketplaceStatus?: "PENDING_PAYMENT" | "FUNDS_HELD" | "CHECKED_IN" | "REFUND_WINDOW_ACTIVE" | "REFUNDED" | "COMPLETED" | "RELEASED";
   payment?: string | null;
   status: "assigned" | "in_progress" | "completed" | "cancelled" | "no_show" | "checked-in" | "checked-out" | "no-show";
+  workedHours?: number | null;
+  attendanceStatus?: "none" | "checked_in" | "checked_out" | null;
+  checkInLocation?: { lat: number; lng: number } | null;
+  checkOutLocation?: { lat: number; lng: number } | null;
   createdAt: string;
 }
 
@@ -413,4 +417,43 @@ export interface WithdrawPayload {
 export interface CheckInPayload {
   jobId: string;
   qrCode: string;
+}
+
+// ============================================================================
+// ATTENDANCE REPORT & ANALYTICS INTERFACES
+// ============================================================================
+
+export interface AttendanceReportItem extends JobAssignment {
+  workedHours?: number | null;
+  attendanceStatus?: "none" | "checked_in" | "checked_out" | null;
+  checkInLocation?: { lat: number; lng: number } | null;
+  checkOutLocation?: { lat: number; lng: number } | null;
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface AttendanceReportResponse {
+  status: string;
+  data: AttendanceReportItem[];
+  pagination: PaginationMeta;
+}
+
+export interface AdminAttendanceAnalytics {
+  totalAssignments: number;
+  todayCheckIns: number;
+  activeShifts: number;
+  avgWorkedHours: number;
+  totalWorkedHours: number;
+}
+
+export interface AdminAttendanceResponse {
+  status: string;
+  analytics: AdminAttendanceAnalytics;
+  data: AttendanceReportItem[];
+  pagination: PaginationMeta;
 }
