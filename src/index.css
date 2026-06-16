@@ -17,8 +17,9 @@
     --popover-foreground: 216 8% 12%;
 
     /* Marketing-surface primary CTA = ink-button (black) */
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 100%;
+    
+   --primary: 214 89% 52%;
+--primary-foreground: 0 0% 100%;
     --primary-deep: 215 8% 29%;
     --primary-soft: 210 27% 96%;
 
