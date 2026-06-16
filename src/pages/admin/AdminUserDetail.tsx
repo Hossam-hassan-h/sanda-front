@@ -303,8 +303,8 @@ export default function AdminUserDetail() {
   if (user.nationalId?.back?.url) {
     documents.push({ id: "national_id_back", type: "national_id_back", name: "بطاقة الرقم القومي (خلف)", url: user.nationalId.back.url, size: 0, uploadedAt: user.createdAt });
   }
-  if (user.profile_image?.url) {
-    documents.push({ id: "personal_photo", type: "personal_photo", name: "صورة شخصية", url: user.profile_image.url, size: 0, uploadedAt: user.createdAt });
+  if (user.verificationSelfie?.url) {
+    documents.push({ id: "personal_photo", type: "personal_photo", name: "صورة شخصية (سيلفي)", url: user.verificationSelfie.url, size: 0, uploadedAt: user.createdAt });
   }
   const verificationRequest = verificationStatus !== "none" || documents.length > 0
     ? { status: verificationStatus, documents, submittedAt: user.createdAt }

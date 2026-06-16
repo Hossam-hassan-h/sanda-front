@@ -103,6 +103,7 @@ export interface User {
     back?: { url?: string; publicId?: string };
   };
   profile_image?: { url?: string; publicId?: string };
+  verificationSelfie?: { url?: string; publicId?: string };
 }
 
 export type JobStatus = "open" | "in-progress" | "completed" | "cancelled";

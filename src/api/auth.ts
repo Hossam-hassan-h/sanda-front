@@ -13,10 +13,9 @@ export interface ResetPasswordPayload { email: string; otp: string; newPassword:
 
 const mapUser = (raw: Record<string, unknown>): User => {
   const user = { ...raw } as Record<string, unknown>;
-  if (user.profileImage && typeof user.profileImage === "object") {
-    user.avatar = (user.profileImage as Record<string, unknown>).url as string || null;
-  } else if (!user.avatar) {
-    user.avatar = null;
+  const profileImage = (user.profileImage ?? user.profile_image) as Record<string, unknown> | undefined;
+  if (typeof user.avatar !== "string" || !user.avatar) {
+    user.avatar = (profileImage?.url as string) || null;
   }
   return {
     id: (user.id as string) || (user.Id as string) || (user._id as string),
@@ -112,13 +111,13 @@ export const authApi = {
     form.append("profileImage", file);
     const { data } = await api.patch(`/users/documents/${userId}`, form);
     const u = ((data as Record<string, unknown>).data ?? data) as Record<string, unknown>;
-    const pi = u.profileImage as { url?: string } | undefined;
-    return pi?.url ?? "";
+    const pi = (u.profileImage ?? u.profile_image) as { url?: string } | undefined;
+    return (u.avatar as string | undefined) ?? pi?.url ?? "";
   },
 
   async uploadVerificationDocuments(
     userId: string,
-    files: { nationalIdFront: File; nationalIdBack: File }
+    files: { nationalIdFront: File; nationalIdBack: File; personalPhoto?: File | null }
   ): Promise<User> {
     if (USE_MOCKS) {
       const cached = localStorage.getItem("sanda_user");
@@ -127,6 +126,9 @@ export const authApi = {
     const form = new FormData();
     form.append("nationalIdFront", files.nationalIdFront);
     form.append("nationalIdBack", files.nationalIdBack);
+    if (files.personalPhoto) {
+      form.append("verificationSelfie", files.personalPhoto);
+    }
     const { data } = await api.patch(`/users/documents/${userId}`, form);
     const raw = ((data as Record<string, unknown>).data ?? data) as Record<string, unknown>;
     return mapUser(raw);

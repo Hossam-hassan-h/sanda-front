@@ -7,6 +7,7 @@ import type { User, Job, Report, UserSummary, JobSummary } from "@/api/types";
  */
 export function mapBackendUser(raw: Record<string, unknown>): User {
   const profileImage = raw.profileImage as Record<string, unknown> | undefined;
+  const verificationSelfie = raw.verificationSelfie as Record<string, unknown> | undefined;
   const rawVerificationStatus = raw.verificationStatus as string | undefined;
 
   return {
@@ -15,7 +16,7 @@ export function mapBackendUser(raw: Record<string, unknown>): User {
     email: (raw.email as string) ?? "",
     phone: raw.phone as string | undefined,
     role: (raw.role as User["role"]) ?? "worker",
-    avatar: profileImage?.url as string | undefined,
+    avatar: (raw.avatar as string | undefined) ?? (profileImage?.url as string | undefined),
     isActive: (raw.isActive as boolean) ?? true,
     isBlocked: (raw.isBlocked as boolean) ?? false,
     isVerified: (raw.isVerified as boolean) ?? false,
@@ -45,6 +46,7 @@ export function mapBackendUser(raw: Record<string, unknown>): User {
     updatedAt: raw.updatedAt as string | undefined,
     nationalId: raw.nationalId as User["nationalId"],
     profile_image: profileImage as User["profile_image"],
+    verificationSelfie: verificationSelfie as User["verificationSelfie"],
   };
 }
 

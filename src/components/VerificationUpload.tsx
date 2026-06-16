@@ -151,6 +151,7 @@ export default function VerificationUpload({ onSuccess }: VerificationUploadProp
         await authApi.uploadVerificationDocuments(user.id, {
           nationalIdFront,
           nationalIdBack,
+          personalPhoto,
         });
       }
 
