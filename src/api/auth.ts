@@ -36,6 +36,9 @@ const mapUser = (raw: Record<string, unknown>): User => {
     skills: user.skills as string[] | undefined,
     createdAt: user.createdAt as string,
     updatedAt: user.updatedAt as string | undefined,
+    nationalId: user.nationalId as User["nationalId"],
+    profile_image: profileImage as User["profile_image"],
+    verificationSelfie: user.verificationSelfie as User["verificationSelfie"],
   } as User;
 };
 
