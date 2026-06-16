@@ -6,6 +6,7 @@ import {
   useJobAssignments,
   useCheckOut,
   useMarkNoShow,
+  useRefundAssignment,
 } from "@/hooks/useJobAssignments";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ const statusConfig = {
 function AssignmentCard({ assignment }: { assignment: JobAssignment }) {
   const checkOut = useCheckOut();
   const markNoShow = useMarkNoShow();
+  const refundAssignment = useRefundAssignment();
 const config = statusConfig[assignment.status] ?? {
   label: "غير معروف",
   color: "bg-gray-100 text-gray-700",
@@ -49,6 +51,17 @@ const config = statusConfig[assignment.status] ?? {
       toast({ title: "خطأ", description: "فشل في التسجيل", variant: "destructive" });
     }
   };
+
+  const handleRefund = async () => {
+    try {
+      await refundAssignment.mutateAsync(assignment.id);
+      toast({ title: "Refund processed", description: "تمت استعادة المبلغ بنجاح" });
+    } catch {
+      toast({ title: "خطأ", description: "فشل استرجاع المبلغ", variant: "destructive" });
+    }
+  };
+
+  const refundWindowActive = assignment.marketplaceStatus === "REFUND_WINDOW_ACTIVE";
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -88,16 +101,31 @@ const config = statusConfig[assignment.status] ?? {
         </div>
 
         {/* Actions */}
-        {assignment.status === "checked-in" && (
-          <div className="flex gap-2 mt-3">
-            <Button size="sm" onClick={handleCheckOut} disabled={checkOut.isPending}>
-              <CheckCircle className="w-4 h-4 mr-1" />
-              تسجيل الانصراف
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleNoShow} disabled={markNoShow.isPending}>
-              <AlertTriangle className="w-4 h-4 mr-1" />
-              لم يحضر
-            </Button>
+        {(assignment.status === "checked-in" || refundWindowActive) && (
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
+            {assignment.status === "checked-in" && (
+              <>
+                <Button size="sm" onClick={handleCheckOut} disabled={checkOut.isPending}>
+                  <CheckCircle className="w-4 h-4 mr-1" />
+                  تسجيل الانصراف
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleNoShow} disabled={markNoShow.isPending}>
+                  <AlertTriangle className="w-4 h-4 mr-1" />
+                  لم يحضر
+                </Button>
+              </>
+            )}
+            {refundWindowActive && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleRefund}
+                disabled={refundAssignment.isPending}
+              >
+                <AlertTriangle className="w-4 h-4 mr-1" />
+                استرجاع المبلغ (Refund)
+              </Button>
+            )}
           </div>
         )}
       </CardContent>
