@@ -5,23 +5,28 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
+        /* button-primary — black marketing-surface CTA */
         default: "bg-primary text-primary-foreground hover:bg-primary-deep",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border-2 border-primary bg-background hover:bg-primary/5 text-primary",
+        /* button-secondary — outlined ghost paired with primary in dual-CTA hero patterns */
+        outline: "border-2 border-ink-deep bg-background hover:bg-muted text-ink-deep",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent/100 hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        accent: "bg-accent text-accent-foreground hover:bg-accent/90 font-semibold",
-        hero: "bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-lg px-8 py-4 rounded-lg shadow-lg hover:shadow-xl transition-all",
+        /* button-ghost — quieter outlined tertiary action */
+        ghost: "rounded-md border-0 hover:bg-accent/10 hover:text-accent",
+        link: "text-meta-link underline-offset-4 hover:underline rounded-none",
+        /* button-buy-cta — cobalt CTA reserved for the app's transactional actions (apply, pay, accept, withdraw) */
+        accent: "bg-accent text-accent-foreground hover:bg-cobalt-deep font-semibold",
+        hero: "bg-primary text-primary-foreground hover:bg-primary-deep font-bold text-lg px-[30px] py-[14px]",
+        "icon-circular": "rounded-full bg-background text-foreground h-10 w-10",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
+        sm: "h-9 px-3",
+        lg: "h-11 px-8",
         icon: "h-10 w-10",
       },
     },

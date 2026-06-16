@@ -6,92 +6,139 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 220 26% 14%;
+    /* Meta-derived design system (DESIGN.md) */
+    --background: 0 0% 100%;
+    --foreground: 216 8% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 26% 14%;
+    --card-foreground: 216 8% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 26% 14%;
+    --popover-foreground: 216 8% 12%;
 
-    --primary: 239 84% 67%;
+    /* Marketing-surface primary CTA = ink-button (black) */
+    --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
-    --primary-deep: 240 64% 42%;
-    --primary-soft: 239 84% 96%;
+    --primary-deep: 215 8% 29%;
+    --primary-soft: 210 27% 96%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 220 26% 14%;
+    --secondary: 210 27% 96%;
+    --secondary-foreground: 216 8% 12%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 210 27% 96%;
+    --muted-foreground: 210 14% 42%;
 
-    --accent: 38 92% 50%;
+    /* Commerce/buy-now CTA = cobalt — used for the app's transactional "accent" actions */
+    --accent: 213 100% 44%;
     --accent-foreground: 0 0% 100%;
 
-    --success: 160 84% 39%;
+    --success: 134 54% 41%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 42 93% 56%;
+    --warning-foreground: 198 39% 6%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 350 79% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 87%;
-    --ring: 239 84% 67%;
+    --border: 220 7% 82%;
+    --input: 220 7% 82%;
+    --ring: 214 89% 52%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 220 26% 14%;
-    --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 239 84% 67%;
+    /* Brand accents */
+    --cobalt: 213 100% 44%;
+    --cobalt-deep: 215 96% 41%;
+    --cobalt-soft: 206 100% 50%;
+    --fb-blue: 214 89% 52%;
+    --meta-link: 220 46% 41%;
+    --oculus-purple: 284 72% 47%;
+    --attention: 40 89% 52%;
+    --critical-strong: 350 87% 55%;
+    --disabled-text: 210 6% 75%;
+
+    /* Surfaces & hairlines */
+    --surface-soft: 210 27% 96%;
+    --hairline: 220 7% 82%;
+    --hairline-soft: 213 20% 89%;
+
+    /* Text scale */
+    --ink-deep: 198 39% 6%;
+    --charcoal: 215 8% 29%;
+    --slate: 225 3% 30%;
+    --steel: 210 14% 42%;
+    --stone: 209 15% 58%;
+
+    --sidebar-background: 198 39% 6%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 213 100% 44%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 20%;
-    --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 220 20% 20%;
-    --sidebar-ring: 239 84% 67%;
+    --sidebar-accent: 215 8% 19%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 215 8% 19%;
+    --sidebar-ring: 213 100% 44%;
 
-    --focus-ring: 227 72% 56%;
+    --focus-ring: 214 89% 52%;
   }
 
   .dark {
-    --background: 220 26% 14%;
-    --foreground: 210 20% 98%;
-    --card: 220 20% 18%;
-    --card-foreground: 210 20% 98%;
-    --popover: 220 20% 18%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 100%;
-    --primary-deep: 227 100% 82%;
-    --primary-soft: 239 30% 22%;
-    --secondary: 220 20% 22%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 220 20% 22%;
-    --muted-foreground: 220 9% 65%;
-    --accent: 38 92% 50%;
+    --background: 198 39% 6%;
+    --foreground: 0 0% 100%;
+    --card: 215 8% 14%;
+    --card-foreground: 0 0% 100%;
+    --popover: 215 8% 14%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 198 39% 6%;
+    --primary-deep: 210 27% 96%;
+    --primary-soft: 215 8% 19%;
+    --secondary: 215 8% 19%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 215 8% 19%;
+    --muted-foreground: 209 15% 58%;
+    --accent: 213 100% 54%;
     --accent-foreground: 0 0% 100%;
-    --success: 160 84% 39%;
+    --success: 134 54% 45%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 20% 22%;
-    --input: 220 20% 22%;
-    --ring: 239 84% 67%;
-    --sidebar-background: 220 26% 10%;
-    --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 239 84% 67%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 15%;
-    --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 220 20% 15%;
-    --sidebar-ring: 239 84% 67%;
+    --warning: 42 93% 56%;
+    --warning-foreground: 198 39% 6%;
+    --destructive: 350 87% 60%;
+    --destructive-foreground: 198 39% 6%;
+    --border: 215 8% 25%;
+    --input: 215 8% 25%;
+    --ring: 213 100% 54%;
 
-    --focus-ring: 227 72% 56%;
+    --cobalt: 213 100% 54%;
+    --cobalt-deep: 215 96% 48%;
+    --cobalt-soft: 206 100% 55%;
+    --fb-blue: 214 89% 60%;
+    --meta-link: 220 46% 60%;
+    --oculus-purple: 284 72% 60%;
+    --attention: 40 89% 55%;
+    --critical-strong: 350 87% 60%;
+    --disabled-text: 210 6% 40%;
+
+    --surface-soft: 215 8% 19%;
+    --hairline: 215 8% 25%;
+    --hairline-soft: 215 8% 22%;
+
+    --ink-deep: 0 0% 100%;
+    --charcoal: 210 27% 90%;
+    --slate: 209 15% 70%;
+    --steel: 210 14% 65%;
+    --stone: 209 15% 58%;
+
+    --sidebar-background: 198 39% 4%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 213 100% 54%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 8% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 215 8% 15%;
+    --sidebar-ring: 213 100% 54%;
+
+    --focus-ring: 213 100% 54%;
   }
 }
 @layer base {
@@ -138,17 +185,20 @@
   }
 
   .hero-overlay {
-    background: linear-gradient(135deg, hsl(239 84% 67% / 0.92), hsl(240 64% 42% / 0.95));
+    background: hsl(var(--ink-deep) / 0.85);
   }
 
+  /* Meta system runs flat — no shadow, hairline-soft border, xxxl (32px) rounding on default cards */
   .card-interactive {
-    @apply bg-card border-2 border-border rounded-xl p-6
-           hover:border-primary/40 hover:shadow-lg
-           transition-all duration-200 cursor-pointer;
+    @apply bg-card border border-[hsl(var(--hairline-soft))] rounded-[32px] p-6
+           hover:border-[hsl(var(--cobalt))]/40
+           transition-colors duration-200 cursor-pointer;
   }
 
   .card-elevated {
-    @apply bg-card rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow duration-200;
+    @apply bg-card border border-[hsl(var(--hairline-soft))] rounded-[32px] p-6
+           shadow-[rgba(20,22,26,0.3)_0px_1px_4px_0px]
+           transition-shadow duration-200;
   }
 
   .badge-status {
