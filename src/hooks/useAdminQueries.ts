@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { usersApi, reportsApi, jobsApi, walletApi, chatApi, dashboardApi } from "@/services/api";
 import type { User, Report, Job, WalletTransaction, Conversation, AdminStats } from "@/api/types";
 
@@ -14,6 +14,7 @@ export const useUsersQuery = (params?: {
   useQuery({
     queryKey: ["admin", "users", params],
     queryFn: () => usersApi.getAll(params),
+    placeholderData: keepPreviousData,
   });
 
 export const useUserQuery = (id: string | null) =>

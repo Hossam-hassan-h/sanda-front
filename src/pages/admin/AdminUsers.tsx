@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AdminLayout from "@/layouts/AdminLayout";
 import { getApiErrorMessage } from "@/lib/password-reset";
 import {
@@ -113,11 +113,35 @@ function RoleBadge({ role }: { role: string }) {
 
 export default function AdminUsers() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const search = searchParams.get("search") || "";
+  const roleFilter = searchParams.get("role") || "";
+  const statusFilter = searchParams.get("status") || "";
+  const page = Math.max(Number(searchParams.get("page")) || 1, 1);
+  const pageSize = Math.max(Number(searchParams.get("pageSize")) || 10, 1);
+
+  const updateParams = useCallback(
+    (updates: Record<string, string | number | null | undefined>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          Object.entries(updates).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === "") {
+              next.delete(key);
+            } else {
+              next.set(key, String(value));
+            }
+          });
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
+  const setPage = useCallback((p: number) => updateParams({ page: p }), [updateParams]);
 
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [banUserId, setBanUserId] = useState<string | null>(null);
@@ -212,10 +236,8 @@ export default function AdminUsers() {
   }, [deleteUserId, deleteUser]);
 
   const handleClearFilters = useCallback(() => {
-    setRoleFilter("");
-    setStatusFilter("");
-    setPage(1);
-  }, []);
+    updateParams({ role: null, status: null, page: 1 });
+  }, [updateParams]);
 
   const banTarget = users.find((u) => u.id === banUserId);
   const deleteTarget = users.find((u) => u.id === deleteUserId);
@@ -316,9 +338,11 @@ export default function AdminUsers() {
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <Search
           placeholder="ابحث بالاسم، الهاتف، أو المدينة..."
+          defaultValue={search}
           onSearch={(v) => {
-            setSearch(v);
-            setPage(1);
+            if (v !== search) {
+              updateParams({ search: v, page: 1 });
+            }
           }}
         />
       </div>
@@ -332,8 +356,7 @@ export default function AdminUsers() {
             options: ROLE_FILTERS,
             value: roleFilter,
             onChange: (v) => {
-              setRoleFilter(v as string);
-              setPage(1);
+              updateParams({ role: v as string, page: 1 });
             },
           },
           {
@@ -343,8 +366,7 @@ export default function AdminUsers() {
             options: STATUS_FILTERS,
             value: statusFilter,
             onChange: (v) => {
-              setStatusFilter(v as string);
-              setPage(1);
+              updateParams({ status: v as string, page: 1 });
             },
           },
         ]}
@@ -547,8 +569,7 @@ export default function AdminUsers() {
                 pageSize={currentPageSize}
                 onPageChange={setPage}
                 onPageSizeChange={(size) => {
-                  setPageSize(size);
-                  setPage(1);
+                  updateParams({ pageSize: size, page: 1 });
                 }}
               />
             )}
