@@ -110,13 +110,21 @@ export function useQrScanner(options: UseQrScannerOptions = {}): UseQrScannerRet
     const targetDeviceId = deviceId || selectedDeviceId || cams[0].id;
     setSelectedDeviceId(targetDeviceId);
 
+    // On many mobile/PWA browsers, enumerateDevices() returns video inputs with an
+    // empty deviceId until getUserMedia has been granted at least once. Forcing an
+    // exact (empty) deviceId constraint then makes the camera fail to open on first
+    // launch. Fall back to a facingMode constraint in that case.
+    const cameraConstraint = targetDeviceId
+      ? { deviceId: { exact: targetDeviceId } }
+      : { facingMode: "environment" };
+
     try {
       const scanner = new Html5Qrcode("sanda-qr-reader");
       scannerRef.current = scanner;
       lockedRef.current = false;
 
       await scanner.start(
-        { deviceId: { exact: targetDeviceId } },
+        cameraConstraint,
         {
           fps,
           qrbox: { width: qrboxSize, height: qrboxSize },
@@ -151,6 +159,7 @@ export function useQrScanner(options: UseQrScannerOptions = {}): UseQrScannerRet
       }
     } catch (err) {
       if (!mountedRef.current) return;
+      console.error("QR scanner camera init failed:", err);
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("NotAllowedError") || message.includes("Permission denied")) {
         const e = { type: "PERMISSION_DENIED" as const, message: "يرجى السماح بالوصول للكاميرا في الإعدادات" };
