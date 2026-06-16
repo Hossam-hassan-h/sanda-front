@@ -9,7 +9,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        /* button-primary — black marketing-surface CTA */
+        /* button-primary — deep teal (SANDA brand) marketing-surface CTA */
         default: "bg-primary text-primary-foreground hover:bg-primary-deep",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         /* button-secondary — outlined ghost paired with primary in dual-CTA hero patterns */
@@ -18,7 +18,7 @@ const buttonVariants = cva(
         /* button-ghost — quieter outlined tertiary action */
         ghost: "rounded-md border-0 hover:bg-accent/10 hover:text-accent",
         link: "text-meta-link underline-offset-4 hover:underline rounded-none",
-        /* button-buy-cta — cobalt CTA reserved for the app's transactional actions (apply, pay, accept, withdraw) */
+        /* button-buy-cta — gold (SANDA brand) CTA reserved for the app's transactional actions (apply, pay, accept, withdraw) */
         accent: "bg-accent text-accent-foreground hover:bg-cobalt-deep font-semibold",
         hero: "bg-primary text-primary-foreground hover:bg-primary-deep font-bold text-lg px-[30px] py-[14px]",
         "icon-circular": "rounded-full bg-background text-foreground h-10 w-10",

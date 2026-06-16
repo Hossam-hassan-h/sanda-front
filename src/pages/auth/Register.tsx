@@ -32,9 +32,8 @@ export default function Register() {
   const onSubmit = async (values: FormValues) => {
     try {
       await registerUser({ name: values.name, email: values.email, phone: values.phone, password: values.password, role });
-      localStorage.setItem("account_verify_email", values.email.trim().toLowerCase());
-      toast({ title: "تم إنشاء الحساب", description: "أرسلنا رمز التحقق إلى بريدك الإلكتروني." });
-      navigate("/verify-email");
+      toast({ title: "تم إنشاء الحساب", description: "يمكنك الآن تسجيل الدخول." });
+      navigate("/login");
     } catch (error) {
       toast({
         title: "فشل إنشاء الحساب",

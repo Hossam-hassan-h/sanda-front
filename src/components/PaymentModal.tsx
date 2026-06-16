@@ -89,6 +89,7 @@ export default function PaymentModal({
   const [payment, setPayment] = useState<ApplicationPaymentIntent | null>(null);
   const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
 
   useEffect(() => {
     if (!open || !applicationId) return;
@@ -105,6 +106,7 @@ export default function PaymentModal({
         if (!publishableKey) {
           throw new Error("Stripe publishable key is missing.");
         }
+        setIsTestMode(publishableKey.startsWith("pk_test_"));
         setPayment(intent);
         setStripePromise(loadStripe(publishableKey));
       })
@@ -159,6 +161,16 @@ export default function PaymentModal({
               <strong className="text-primary">{total}</strong>
             </div>
           </div>
+
+          {isTestMode && (
+            <div className="rounded-lg border border-dashed border-warning/40 bg-warning/5 p-3 text-xs text-muted-foreground">
+              <div className="font-semibold text-warning mb-1">Test mode &mdash; use a Stripe test card</div>
+              <div>Card Number: 4242 4242 4242 4242</div>
+              <div>Expiry: Any future date</div>
+              <div>CVC: Any 3 digits</div>
+              <div>ZIP: Any valid ZIP</div>
+            </div>
+          )}
 
           {isLoading && (
             <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">

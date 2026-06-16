@@ -15,6 +15,7 @@ import {
   Info,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import Logo from "@/components/branding/Logo";
 import NotificationBell from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -55,8 +56,8 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link to={logoHref} className="flex items-center gap-2 font-bold text-xl">
-          <span className="text-primary">سندة</span>
+        <Link to={logoHref} aria-label="سندة">
+          <Logo size={32} />
         </Link>
 
         {/* Desktop Nav */}

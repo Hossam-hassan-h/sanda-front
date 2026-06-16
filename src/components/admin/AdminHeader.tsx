@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { LogOut, Menu, Shield } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import Logo from "@/components/branding/Logo";
 import NotificationBell from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 
@@ -26,7 +27,7 @@ export default function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
           </Button>
         )}
         <Link to="/admin" className="flex items-center gap-3">
-          <span className="text-primary font-bold text-xl">سندة</span>
+          <Logo size={28} />
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
             <Shield className="w-3.5 h-3.5" />
             لوحة الإدارة
