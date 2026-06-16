@@ -93,6 +93,8 @@ const DOC_LABELS: Record<string, string> = {
 };
 
 function DocumentThumb({ doc, onPreview }: { doc: VerificationDocument; onPreview: () => void }) {
+  const isImage = doc.url.startsWith("data:image") || doc.url.startsWith("http");
+
   return (
     <button
       type="button"
@@ -100,7 +102,7 @@ function DocumentThumb({ doc, onPreview }: { doc: VerificationDocument; onPrevie
       className="group block w-full text-right rounded-lg border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all overflow-hidden"
     >
       <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
-        {doc.url.startsWith("data:image") ? (
+        {isImage ? (
           <img
             src={doc.url}
             alt={doc.name}
@@ -132,6 +134,8 @@ function DocumentPreviewDialog({
   onClose: () => void;
 }) {
   if (!doc) return null;
+  const isImage = doc.url.startsWith("data:image") || doc.url.startsWith("http");
+
   return (
     <Dialog open={!!doc} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-3xl">
@@ -139,7 +143,7 @@ function DocumentPreviewDialog({
           <DialogTitle>{DOC_LABELS[doc.type] ?? doc.name}</DialogTitle>
         </DialogHeader>
         <div className="bg-muted rounded-lg overflow-hidden">
-          {doc.url.startsWith("data:image") ? (
+          {isImage ? (
             <img src={doc.url} alt={doc.name} className="w-full h-auto" />
           ) : (
             <div className="p-12 flex flex-col items-center gap-2 text-muted-foreground">

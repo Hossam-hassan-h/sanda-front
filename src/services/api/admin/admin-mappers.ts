@@ -6,9 +6,10 @@ import type { User, Job, Report, UserSummary, JobSummary } from "@/api/types";
  * - بتضبط الـ fields اللي مش موجودة في الباك بقيم default
  */
 export function mapBackendUser(raw: Record<string, unknown>): User {
-  const profileImage = raw.profileImage as Record<string, unknown> | undefined;
-  const verificationSelfie = raw.verificationSelfie as Record<string, unknown> | undefined;
-  const rawVerificationStatus = raw.verificationStatus as string | undefined;
+  const profileImage = (raw.profileImage ?? raw.profile_image) as Record<string, unknown> | undefined;
+  const nationalId = (raw.nationalId ?? raw.national_id) as User["nationalId"];
+  const verificationSelfie = (raw.verificationSelfie ?? raw.verification_selfie) as Record<string, unknown> | undefined;
+  const rawVerificationStatus = (raw.verificationStatus ?? raw.verification_status) as string | undefined;
 
   return {
     id: (raw.id as string) ?? (raw._id as string),
@@ -19,8 +20,8 @@ export function mapBackendUser(raw: Record<string, unknown>): User {
     avatar: (raw.avatar as string | undefined) ?? (profileImage?.url as string | undefined),
     isActive: (raw.isActive as boolean) ?? true,
     isBlocked: (raw.isBlocked as boolean) ?? false,
-    isVerified: (raw.isVerified as boolean) ?? false,
-    is_verified: (raw.isVerified as boolean) ?? false,
+    isVerified: ((raw.isVerified ?? raw.is_verified) as boolean) ?? false,
+    is_verified: ((raw.isVerified ?? raw.is_verified) as boolean) ?? false,
     verification_status: (rawVerificationStatus as User["verification_status"]) ?? "none",
     walletBalance: 0,
     workerState: raw.workerState as User["workerState"],
@@ -44,7 +45,7 @@ export function mapBackendUser(raw: Record<string, unknown>): User {
     skills: raw.skills as string[] | undefined,
     createdAt: (raw.createdAt as string) ?? "",
     updatedAt: raw.updatedAt as string | undefined,
-    nationalId: raw.nationalId as User["nationalId"],
+    nationalId,
     profile_image: profileImage as User["profile_image"],
     verificationSelfie: verificationSelfie as User["verificationSelfie"],
   };

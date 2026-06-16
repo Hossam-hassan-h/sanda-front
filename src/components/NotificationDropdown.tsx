@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Bell, Briefcase, Check, Flag, Info, MessageCircle, ShieldCheck, User } from "lucide-react";
 import type { Notification } from "@/api/types";
 import { cn } from "@/lib/utils";
+import { fetchUserById } from "@/services/api/admin/endpoints/users";
 
 const MAX_VISIBLE = 10;
 
@@ -17,6 +18,12 @@ const typeConfig: Record<string, { icon: ReactNode; color: string }> = {
 
 const getDateLabel = (date: string) =>
   new Date(date).toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
+
+const isObjectId = (value: unknown): value is string =>
+  typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
+
+const getActorId = (actor: Notification["actor"]) =>
+  typeof actor === "string" ? actor : actor?.id ?? actor?._id;
 
 interface NotificationDropdownProps {
   notifications?: Notification[];
@@ -41,7 +48,7 @@ export default memo(function NotificationDropdown({
   const visible = notifications?.slice(0, MAX_VISIBLE) ?? [];
   const isAdmin = userRole === "admin";
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = async (notification: Notification) => {
     if (!notification.isRead) {
       try { onMarkRead(notification.id); } catch { /* best-effort */ }
     }
@@ -62,8 +69,13 @@ export default memo(function NotificationDropdown({
       const reportId = notification.entityId ?? notification.metadata?.reportId;
       if (reportId) navigate(`/admin/reports/${reportId}`);
     } else if (notifType === "verification_request" && isAdmin) {
-      const targetId = notification.entityId ?? (typeof notification.actor === "string" ? notification.actor : notification.actor?.id ?? notification.actor?._id);
-      if (targetId) navigate(`/admin/users/${targetId}`);
+      const targetId = notification.entityType === "user" && isObjectId(notification.entityId)
+        ? notification.entityId
+        : getActorId(notification.actor);
+      if (isObjectId(targetId)) {
+        const targetUser = await fetchUserById(targetId);
+        if (targetUser?.id) navigate(`/admin/users/${targetUser.id}`);
+      }
     } else if (jobId || notification.metadata?.jobId) {
       const targetJobId = jobId ?? notification.metadata?.jobId;
       if (isAdmin) {

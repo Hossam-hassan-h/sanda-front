@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { fetchUserById } from "@/services/api/admin/endpoints/users";
 
 const typeConfig: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
   job: { icon: <Briefcase className="w-4 h-4" />, label: "وظائف", color: "bg-blue-100 text-blue-700" },
@@ -45,6 +46,12 @@ function formatNotifDate(dateStr: string) {
     minute: "2-digit",
   });
 }
+
+const isObjectId = (value: unknown): value is string =>
+  typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
+
+const getActorId = (actor: Notification["actor"]) =>
+  typeof actor === "string" ? actor : actor?.id ?? actor?._id;
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
@@ -95,8 +102,18 @@ export default function NotificationsPage() {
     }
 
     if (notifType === "verification_request" && userRole === "admin") {
-      const targetId = notification.entityId ?? (typeof notification.actor === "string" ? notification.actor : notification.actor?.id ?? notification.actor?._id);
-      if (targetId) { navigate(`/admin/users/${targetId}`); return; }
+      const targetId = notification.entityType === "user" && isObjectId(notification.entityId)
+        ? notification.entityId
+        : getActorId(notification.actor);
+      if (!isObjectId(targetId)) return;
+
+      const targetUser = await fetchUserById(targetId);
+      if (targetUser?.id) {
+        navigate(`/admin/users/${targetUser.id}`);
+      } else {
+        toast({ title: "تعذر فتح المستخدم", variant: "destructive" });
+      }
+      return;
     }
 
     if (notification.metadata?.reportId) {

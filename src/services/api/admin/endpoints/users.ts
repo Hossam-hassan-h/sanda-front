@@ -62,7 +62,7 @@ export async function fetchAllUsers(): Promise<User[] | null> {
 export async function fetchUserById(id: string): Promise<User | null> {
   if (USE_MOCKS) return (mockUsers as User[]).find((u) => u.id === id) ?? null;
   try {
-    const response = await api.get(`/users/profile/${id}`);
+    const response = await api.get(`/admin/users/${id}`);
     const raw = response.data as Record<string, unknown>;
     return mapBackendUser(raw);
   } catch {
