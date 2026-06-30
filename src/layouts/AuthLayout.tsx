@@ -26,7 +26,7 @@ export default function AuthLayout({ children, title, subtitle }: { children: Re
       </div>
 
       {/* Brand side */}
-      <div className="hidden lg:flex flex-col justify-center bg-gradient-to-br from-primary to-primary-deep text-primary-foreground px-16 py-12 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col justify-center bg-gradient-to-br from-primary-deep via-cobalt to-primary-deep text-primary-foreground px-16 py-12 relative overflow-hidden">
         <div className="absolute -top-20 -end-20 w-96 h-96 rounded-full bg-accent/20 blur-3xl" />
         <div className="absolute -bottom-20 -start-20 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
         <Logo variant="mark" tone="light" size={120} className="absolute -bottom-6 -end-6 opacity-10" />

@@ -58,7 +58,7 @@ export default function JobsFeed() {
 
   return (
     <UserLayout>
-      <section className="bg-gradient-to-br from-primary to-primary-deep text-primary-foreground py-12">
+      <section className="bg-gradient-to-br from-primary-deep via-cobalt to-primary-deep text-primary-foreground py-12">
         <div className="container mx-auto px-4 md:px-6">
           <h1 className="font-heading font-extrabold text-3xl md:text-4xl mb-2">الوظائف المتاحة</h1>
           <p className="text-primary-foreground/80 mb-6">اعثر على وظيفتك المناسبة بين أكثر من 400 وظيفة بارت-تايم</p>

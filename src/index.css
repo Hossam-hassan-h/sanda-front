@@ -14,138 +14,138 @@
       Border         -> --border         | Background     -> --background
       Surface        -> --surface-soft / --card
     */
-    --background: 0 0% 100%;
-    --foreground: 216 8% 12%;
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 216 8% 12%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 216 8% 12%;
+    --popover-foreground: 222 47% 11%;
 
     /* SANDA brand — primary CTA = deep teal (from logo mark) */
-    --primary: 185 63% 27%;
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
-    --primary-deep: 185 63% 19%;
-    --primary-soft: 184 45% 94%;
+    --primary-deep: 222 47% 11%;
+    --primary-soft: 214 95% 93%;
 
-    --secondary: 210 27% 96%;
-    --secondary-foreground: 216 8% 12%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 27% 96%;
-    --muted-foreground: 210 14% 42%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
     /* SANDA brand accent = gold (from logo wordmark) — transactional/highlight actions */
-    --accent: 41 49% 48%;
-    --accent-foreground: 198 39% 8%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
 
-    --success: 134 54% 41%;
+    --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 42 93% 56%;
-    --warning-foreground: 198 39% 6%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
 
-    --destructive: 350 79% 51%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 190 12% 82%;
-    --input: 190 12% 82%;
-    --ring: 185 55% 40%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
 
     --radius: 0.5rem;
 
     /* Brand accents — legacy names retained, recolored to teal/gold */
-    --cobalt: 41 49% 48%;
-    --cobalt-deep: 41 52% 36%;
-    --cobalt-soft: 42 60% 62%;
-    --fb-blue: 185 55% 45%;
-    --meta-link: 186 60% 30%;
-    --oculus-purple: 284 72% 47%;
-    --attention: 40 89% 52%;
-    --critical-strong: 350 87% 55%;
-    --disabled-text: 210 6% 75%;
+    --cobalt: 224 64% 33%;
+    --cobalt-deep: 222 47% 11%;
+    --cobalt-soft: 214 95% 93%;
+    --fb-blue: 221 83% 53%;
+    --meta-link: 221 83% 53%;
+    --oculus-purple: 176 69% 26%;
+    --attention: 38 92% 50%;
+    --critical-strong: 0 72% 51%;
+    --disabled-text: 215 16% 70%;
 
     /* Surfaces & hairlines */
-    --surface-soft: 184 20% 96%;
-    --hairline: 190 12% 82%;
-    --hairline-soft: 186 22% 89%;
+    --surface-soft: 210 40% 98%;
+    --hairline: 214 32% 91%;
+    --hairline-soft: 214 32% 91%;
 
     /* Text scale */
-    --ink-deep: 198 39% 6%;
-    --charcoal: 215 8% 29%;
-    --slate: 225 3% 30%;
-    --steel: 210 14% 42%;
-    --stone: 209 15% 58%;
+    --ink-deep: 222 47% 11%;
+    --charcoal: 222 20% 25%;
+    --slate: 215 16% 47%;
+    --steel: 215 16% 47%;
+    --stone: 215 20% 65%;
 
-    --sidebar-background: 198 39% 6%;
+    --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 185 63% 27%;
+    --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 8% 19%;
+    --sidebar-accent: 222 47% 17%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 215 8% 19%;
-    --sidebar-ring: 185 55% 40%;
+    --sidebar-border: 222 47% 17%;
+    --sidebar-ring: 221 83% 53%;
 
-    --focus-ring: 185 55% 40%;
+    --focus-ring: 221 83% 53%;
   }
 
   .dark {
-    --background: 195 35% 7%;
-    --foreground: 0 0% 100%;
-    --card: 195 22% 13%;
-    --card-foreground: 0 0% 100%;
-    --popover: 195 22% 13%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 184 55% 45%;
+    --background: 222 84% 5%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 213 94% 68%;
     --primary-foreground: 0 0% 100%;
-    --primary-deep: 184 60% 35%;
-    --primary-soft: 190 25% 18%;
-    --secondary: 215 8% 19%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 215 8% 19%;
-    --muted-foreground: 209 15% 58%;
-    --accent: 41 55% 55%;
-    --accent-foreground: 198 39% 6%;
-    --success: 134 54% 45%;
+    --primary-deep: 222 47% 11%;
+    --primary-soft: 217 33% 18%;
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 222 47% 11%;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-    --warning: 42 93% 56%;
-    --warning-foreground: 198 39% 6%;
-    --destructive: 350 87% 60%;
-    --destructive-foreground: 198 39% 6%;
-    --border: 190 10% 25%;
-    --input: 190 10% 25%;
-    --ring: 184 55% 55%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+    --destructive: 0 91% 71%;
+    --destructive-foreground: 222 47% 11%;
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 213 94% 68%;
 
-    --cobalt: 41 55% 55%;
-    --cobalt-deep: 41 50% 42%;
-    --cobalt-soft: 42 60% 65%;
-    --fb-blue: 184 55% 55%;
-    --meta-link: 184 60% 60%;
-    --oculus-purple: 284 72% 60%;
-    --attention: 40 89% 55%;
-    --critical-strong: 350 87% 60%;
-    --disabled-text: 210 6% 40%;
+    --cobalt: 213 94% 68%;
+    --cobalt-deep: 222 47% 11%;
+    --cobalt-soft: 217 33% 18%;
+    --fb-blue: 213 94% 68%;
+    --meta-link: 213 94% 68%;
+    --oculus-purple: 174 86% 31%;
+    --attention: 38 92% 50%;
+    --critical-strong: 0 91% 71%;
+    --disabled-text: 215 20% 40%;
 
-    --surface-soft: 195 18% 16%;
-    --hairline: 190 10% 25%;
-    --hairline-soft: 190 10% 22%;
+    --surface-soft: 217 33% 18%;
+    --hairline: 217 33% 18%;
+    --hairline-soft: 215 28% 25%;
 
-    --ink-deep: 0 0% 100%;
-    --charcoal: 210 27% 90%;
-    --slate: 209 15% 70%;
-    --steel: 210 14% 65%;
-    --stone: 209 15% 58%;
+    --ink-deep: 210 40% 98%;
+    --charcoal: 210 40% 90%;
+    --slate: 215 20% 65%;
+    --steel: 215 20% 65%;
+    --stone: 215 16% 57%;
 
-    --sidebar-background: 195 30% 5%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 184 55% 45%;
+    --sidebar-background: 222 84% 5%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 213 94% 68%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 8% 15%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 215 8% 15%;
-    --sidebar-ring: 184 55% 55%;
+    --sidebar-accent: 217 33% 18%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 18%;
+    --sidebar-ring: 213 94% 68%;
 
-    --focus-ring: 184 55% 55%;
+    --focus-ring: 213 94% 68%;
   }
 }
 @layer base {
